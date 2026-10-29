@@ -267,7 +267,11 @@ const collectDefinitions = (cssFiles, { prefix, foreignClasses, foreignClassPatt
     for (const { name, line } of css.selectorClasses) {
       if (name.startsWith(prefix)) define(name, `${file}:${line}`);
       else if (!foreign.has(name) && !foreignClassPattern.test(name)) {
-        errors.push(`${file}:${line} defines the class ".${name}": our classes start with "${prefix}"`);
+        errors.push(
+          `${file}:${line} defines the class ".${name}": our classes start with "${prefix}". ` +
+            `If ".${name}" belongs to a third-party library (e.g. "recharts-wrapper", "leaflet-popup"), do not ` +
+            `rename it: add the library's prefix to FOREIGN_CLASS_PREFIXES in scripts/check-css.mjs, with a comment.`
+        );
       }
     }
     for (const { name, line } of css.utilities) {

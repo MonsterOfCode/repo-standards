@@ -14,8 +14,19 @@ const FOREIGN_CLASSES = [
   // Tailwind's dark-mode class on <html> (`@custom-variant dark`, set by config/colorMode.js).
   "dark",
 ];
-// Leaflet's own markup (components/maps/LocationMap.jsx), restyled inside the app's map wrapper class.
-const FOREIGN_CLASS_PATTERN = /^leaflet-/;
+// Prefixes of the classes a third-party library renders and our CSS restyles. Never rename such a class
+// to our prefix (the library would no longer match it): list the library's prefix here, with a comment
+// saying which library and where it is used.
+const FOREIGN_CLASS_PREFIXES = [
+  // Leaflet maps (components/maps/LocationMap.jsx), restyled inside the app's map wrapper class.
+  "leaflet-",
+  // Recharts charts, e.g. ".recharts-wrapper" sized by a page stylesheet - uncomment if the project uses Recharts.
+  // "recharts-",
+];
+const escapeRegExp = (value) => value.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const FOREIGN_CLASS_PATTERN = FOREIGN_CLASS_PREFIXES.length
+  ? new RegExp(`^(?:${FOREIGN_CLASS_PREFIXES.map(escapeRegExp).join("|")})`)
+  : /$^/;
 
 // Unprefixed `@utility` blocks that deliberately replace a Tailwind built-in utility of the same name
 // (the check proves each one is a real built-in). Anything else needs the prefix.

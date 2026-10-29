@@ -158,13 +158,19 @@ for Acme...), so our classes never collide with a framework's and can be found a
 - **Defined when used:** every prefixed class used in the code or the tests is defined.
 - **Out of scope:**
   - framework classes (Tailwind utilities such as `flex` or `px-4`, and the `dark` variant);
-  - third-party widget classes (`leaflet-*`...);
+  - classes rendered by a third-party library and restyled by our CSS, such as Leaflet maps
+    (`leaflet-*`) or Recharts charts (`recharts-*`, e.g. `.recharts-wrapper`). They keep the library's
+    name: renaming one to our prefix would stop it matching. List the library's prefix in the check
+    (`FOREIGN_CLASS_PREFIXES`) with a comment saying which library and where it is used;
   - intentional overrides of a framework built-in (proved by compiling the framework's own CSS).
 
   All of these are an explicit, commented allow-list.
 
+When the check finds an unprefixed class, its message says how to fix it: rename **our** class to
+the prefix, or, if the class belongs to a library, add the library's prefix to the allow-list.
+
 Reference: `scripts/react-frontend/check-css.mjs` + `lib/css-classes.mjs` (prefix through
-`CSS_CLASS_PREFIX` or the constant at the top).
+`CSS_CLASS_PREFIX` or the constant at the top; library prefixes in `FOREIGN_CLASS_PREFIXES`).
 
 ## 6. Commit messages
 
