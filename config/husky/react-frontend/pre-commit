@@ -1,0 +1,13 @@
+# Fast checks before every commit ; the full gate (tests + build) runs on push.
+
+# Secrets in the staged changes (CI scans the whole history with the same tool). Never skipped.
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, so the staged changes cannot be scanned for secrets and the commit is refused." >&2
+  echo "  Install it: brew install gitleaks   (other systems: https://github.com/gitleaks/gitleaks#installing)" >&2
+  echo "  Then check: gitleaks version   - see docs/setup.md, Prerequisites." >&2
+  exit 1
+fi
+gitleaks git --pre-commit --staged --redact --no-banner
+
+# format:check, lint, check:translations, check:css, check:env-example
+npm run --silent checks

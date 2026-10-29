@@ -1,0 +1,16 @@
+# Secret scanning (CI job "Secret scan", gitleaks). Extends the default rule set; the allowlist below only
+# covers values that are fake by design. Never allowlist a real secret: rotate it and rewrite history.
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test fixtures: throwaway JWT key and fake app-client keys used only by the Jest suite"
+paths = ['''(^|/)src/test/''']
+
+[[allowlists]]
+description = "Documentation prose that lists secret NAMES (no values)"
+paths = ['''(^|/)docs/.*\.md$''']
+regexTarget = "line"
+regexes = ['''app-client id/key''']

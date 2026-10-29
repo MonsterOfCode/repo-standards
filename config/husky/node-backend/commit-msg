@@ -1,0 +1,2 @@
+# type(scope)?: (#<issue> )?subject - commitlint.config.js / src/checks/commit-message.js
+npx --no -- commitlint --edit "$1"

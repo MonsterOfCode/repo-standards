@@ -1,0 +1,11 @@
+# Full gate before a push : unit tests at 100% coverage and the production build. The
+# mocked and real-backend E2E suites stay in CI / the release workflow.
+
+# Node 25+ ships its own experimental localStorage, which breaks jsdom's in Vitest (CLAUDE.md, Commands).
+NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
+if [ "$NODE_MAJOR" -ge 25 ]; then
+  export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--no-experimental-webstorage"
+fi
+
+npm run --silent test:coverage
+npm run --silent build

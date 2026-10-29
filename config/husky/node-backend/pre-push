@@ -1,0 +1,2 @@
+# the full gate before anything leaves the machine - every check plus the tests with 100% coverage.
+npm run verify
