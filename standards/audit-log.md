@@ -1,6 +1,6 @@
 # Audit log standard
 
-**For:** every project of ours that stores personal data. **Audience:** the developer, or the AI
+**Version:** 1.0 (2026-10-31). **For:** every project of ours that stores personal data. **Audience:** the developer, or the AI
 agent, building or reviewing a project's audit log.
 
 This is the standard all our applications follow, so that an audit question ("who did what, when,

@@ -1,6 +1,6 @@
 # Commit checks standard
 
-**For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
+**Version:** 1.0 (2026-10-31). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
 setting up or reviewing a project's git hooks and CI checks.
 
 Every commit must pass the same fast checks, every push the full test gate, and every commit
@@ -56,7 +56,14 @@ Reference hooks: `config/husky/node-backend/` and `config/husky/react-frontend/`
 - The linter (ESLint, ...) with **zero warnings** (`--max-warnings 0`).
 - Committed docs, JSON and config files are formatted too.
 
-### 3.2 Translations
+### 3.2 Architecture
+
+`npm run check:architecture`: the layer rules of the architecture standard (ARCH-B1–B7 for a
+backend, ARCH-F1–F7 for a frontend) with dependency-cruiser, no violation.
+
+Reference: `config/dependency-cruiser/`.
+
+### 3.3 Translations
 
 Each layer checks **its own** locales: the backend's languages against each other, and the
 frontend's against each other. There is no comparison between backend and frontend.
@@ -75,7 +82,7 @@ frontend's against each other. There is no comparison between backend and fronte
 Reference: `scripts/node-backend/check-locales.js` + `checks/locale-check.js`,
 `scripts/react-frontend/check-translations.mjs` + `lib/translations.mjs`.
 
-### 3.3 Secrets
+### 3.4 Secrets
 
 `gitleaks git --pre-commit --staged --redact` with the project's `.gitleaks.toml`, which extends the
 default rules. Its allow-list only covers values that are fake by design, such as test fixtures.
@@ -83,7 +90,7 @@ A real secret is never allow-listed: rotate it and rewrite history.
 
 Reference: `config/gitleaks.toml`.
 
-### 3.4 `.env.example` parity
+### 3.5 `.env.example` parity
 
 - Every environment variable the code reads is in `.env.example` (commented, with a safe default or
   placeholder, **never a real value**).
@@ -209,6 +216,7 @@ Reference: `config/commitlint.config.js` (self-contained; `npm i -D @commitlint/
 - [ ] `npm install` activates the hooks: pre-commit (gitleaks + checks), commit-msg (commitlint), pre-push (verify).
 - [ ] `npm run checks` and `npm run verify` exist, and CI runs `verify`, commitlint on the pushed commits and gitleaks on the history.
 - [ ] Formatting and lint: no differences, zero warnings.
+- [ ] Architecture: `check:architecture` with no violation.
 - [ ] Translations: same keys, same variables per key, plural families, no empty values, language rules; frontend: used and unused keys.
 - [ ] `.env.example` parity in both directions; deployment examples name only known variables.
 - [ ] Backend: email templates (files in both formats, or a catalogue built in every language).

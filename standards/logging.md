@@ -1,6 +1,6 @@
 # Application logging standard
 
-**For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
+**Version:** 1.0 (2026-10-31). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
 reviewing a service's logging.
 
 This is the standard all our services follow, so that every service's logs can be collected,

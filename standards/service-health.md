@@ -1,6 +1,6 @@
 # Service health and failure alerts standard
 
-**For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
+**Version:** 1.0 (2026-10-31). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
 reviewing a service's dependency monitoring.
 
 A service is only as healthy as the things it depends on: its database, email, billing system,

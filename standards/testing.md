@@ -1,6 +1,6 @@
 # Testing standard (100% coverage gate)
 
-**For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
+**Version:** 1.0 (2026-10-31). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
 setting up or reviewing a project's tests and pipeline.
 
 Every line of our code is executed by a test, and the pipeline refuses to merge, build or deploy
