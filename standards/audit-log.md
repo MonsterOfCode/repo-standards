@@ -1,7 +1,10 @@
 # Audit log standard
 
-**Version:** 1.0 (2026-10-31). **For:** every project of ours that stores personal data. **Audience:** the developer, or the AI
+**Version:** 1.1 (2026-11-02). **For:** every project of ours that stores personal data. **Audience:** the developer, or the AI
 agent, building or reviewing a project's audit log.
+
+**Changes in 1.1:** stack-specific details moved to a "Reference implementation (Node/React)"
+callout (section 13); links to the privacy and security standards.
 
 This is the standard all our applications follow, so that an audit question ("who did what, when,
 to what, and who saw what") gets answered the same way in every system, and an auditor or a
@@ -129,7 +132,14 @@ export const CHANGE_EVENT_FIELDS_WITH_VALUES = {
   userProfile: [], // names, phone: never
 };
 
-export const HTTP_LEDGER_BODY_FIELDS_WITH_VALUES = ["status", "state", "role", "type", "isActive", "language"];
+export const HTTP_LEDGER_BODY_FIELDS_WITH_VALUES = [
+  "status",
+  "state",
+  "role",
+  "type",
+  "isActive",
+  "language",
+];
 
 export const HTTP_LEDGER_REDACTED_URL_PARAM = /token|code|secret|signature|otc|password|apikey/i;
 ```
@@ -198,6 +208,10 @@ metadata: {
 A test enumerates every mutating route of every router, sends each one through the real
 application, and asserts that the ledger recorded it under exactly that route template. A new route
 is covered automatically, and a route the middleware misses fails the build.
+
+The access history (section 11) and the anomaly alerts (section 12) are how the audit serves the
+[privacy standard](privacy.md) (right of access, access logging of sensitive data) and the
+[security standard](security.md) (security events).
 
 ## 8. Retention
 
@@ -270,6 +284,16 @@ Required before real data is in production:
    seal is copied outside the server into write-once storage (e.g. S3 Object Lock in compliance
    mode, kept at least as long as the retention). A verifier script recomputes the seals and is run
    monthly and for any investigation.
+
+> **Reference implementation (Node/React).** MongoDB: an `audit_logs` collection with a
+> `$jsonSchema` validator and a TTL index on `expiresAt` (`expireAfterSeconds: 0`), created by its
+> migration; the audit config is `config/audit.js`; `recordAuditEvent(type, ..., { session })`
+> validates the row with Zod and writes it with the transaction's session; the request context is
+> `AsyncLocalStorage`; the ledger is an Express middleware mounted on `/api/v1` before
+> `express.json()`, which resolves the route template from the router's stack at `finish`; the
+> anomaly job is a `node-cron` job under the database lock; seals go to S3 Object Lock. A
+> SQL database uses an `audit_logs` table, a scheduled `DELETE ... WHERE expires_at < now()` run by a
+> privileged role, and `GRANT INSERT, SELECT` only for the application role.
 
 ## 14. Checklist
 

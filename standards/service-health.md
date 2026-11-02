@@ -1,7 +1,10 @@
 # Service health and failure alerts standard
 
-**Version:** 1.0 (2026-10-31). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
+**Version:** 1.1 (2026-11-02). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
 reviewing a service's dependency monitoring.
+
+**Changes in 1.1:** an external uptime monitor of the public URL is required in production
+(section 11); stack-specific details moved to a "Reference implementation (Node/React)" callout.
 
 A service is only as healthy as the things it depends on: its database, email, billing system,
 partner APIs, and its own scheduled jobs. This standard makes every service watch those
@@ -16,8 +19,9 @@ chose when one fails, in the same way across all our projects.
 - **Not a replacement for metrics or logs.** Those are for engineers; the check results are also
   exported as metrics (section 10) so Prometheus can graph and alert on them. The page and the alerts
   are for the people responsible for the service, in plain language.
-- **Not uptime monitoring from outside.** An external probe of the public URL is still recommended;
-  this checks what only the service itself can see.
+- **Not uptime monitoring from outside.** An external probe of the public URL is **required in
+  production** (section 11): when the service is down, its own checks and alerts are down with it.
+  This standard checks what only the service itself can see.
 
 **If you are an agent implementing this in a project:**
 
@@ -26,7 +30,7 @@ chose when one fails, in the same way across all our projects.
    permissions) before writing anything.
 2. Adapt it to the stack, but keep the **contract** the same: the check result (section 3), the
    statuses, the alert rules (section 6), the permissions (section 7) and the settings (section 5).
-3. Finish with the checklist in section 12. Every item must be true and covered by a test.
+3. Finish with the checklist in section 13. Every item must be true and covered by a test.
    Anything you could not do, report explicitly; never skip it silently.
 
 The key words **must**, **must not** and **should** mean what they say.
@@ -231,14 +235,45 @@ Example Prometheus alert rules, alongside the in-app alerts and not replacing th
   expr: time() - job_last_success_timestamp_seconds > 2 * 3600
 ```
 
-## 11. Running on Kubernetes
+## 11. External uptime monitoring (required in production)
+
+The in-app checks and alerts run inside the service. When the service, its server, its network or
+its edge proxy is down, nothing inside it can raise an alert. So every production environment
+**must** also be watched from outside:
+
+- **A monitor outside the service's infrastructure** (a hosted uptime service, or a monitor on
+  another provider and another network), never on the same server or cluster.
+- **It probes the public URLs** a user reaches, through the real DNS, TLS and edge proxy:
+  - the API's readiness endpoint (`GET /health`, section 10), expecting `200`;
+  - the frontend's entry page, expecting `200` and a known piece of content.
+- **Every 1 to 5 minutes**, from at least two locations, alerting after 2 failed probes in a row
+  (to absorb a single network blip).
+- **It also watches the TLS certificate** (alert at least 14 days before expiry) and, where the
+  service tool allows it, the domain's expiry.
+- **Alerts go to people, by a channel that doesn't depend on the service**: email and/or a phone
+  push or SMS to the on-call people, never only to the app's own notifications.
+- **Dead-man's switches** for what runs outside the service (backups, the external scheduler, if
+  any): the job pings the monitor on success, and the monitor alerts when the ping does not arrive.
+- **Staging should have it too**, with alerts to the team channel only.
+- The monitor's configuration (URLs, intervals, who is alerted) is written in the project's
+  deployment docs, and a test alert is sent once when it is set up.
+
+## 12. Running on Kubernetes
 
 - The job runs inside the API pods, guarded by the database lock, or as a CronJob; either way, once
   per tick across all replicas.
 - Readiness stays limited to the process and its database (section 10).
 - The state lives in the database, so every replica shows the same page.
 
-## 12. Checklist
+> **Reference implementation (Node/React).** The checks are modules in a registry under
+> `services/service-health/`; the tick is a `node-cron` job in the API process under a MongoDB
+> lock (`database/job-lock.js`), which also records `job_runs` for every job; settings and state are
+> collections (`service_health_settings`, `service_health`); metrics with `prom-client`; SMTP checked
+> with the mailer's `verify()` (connect, TLS, login, no message). External uptime: a hosted monitor
+> (e.g. an Uptime Kuma instance on another provider, or a hosted service) on `/api/v1/health` and the
+> SPA's `/`, plus a healthchecks-style ping URL for the backup job.
+
+## 13. Checklist
 
 - [ ] Every external dependency and every scheduled job has a check in the registry.
 - [ ] Checks return the result of section 3, run concurrently with a timeout, never throw, and never touch personal data or create anything.
@@ -252,3 +287,4 @@ Example Prometheus alert rules, alongside the in-app alerts and not replacing th
 - [ ] `/health/live` and `/health` (process + own database only), public and without detail; no external dependency can make the service unready.
 - [ ] `/metrics` (protected) exports the stored check state and job timestamps of section 10; a scrape never runs a check; disabled checks are listed with `-1`.
 - [ ] Tests of section 9; no real partner called in tests.
+- [ ] Production: an external uptime monitor outside the service's infrastructure probes the public API and frontend URLs and the TLS certificate, alerts people by a channel independent of the service, and dead-man's switches watch the backups (section 11).

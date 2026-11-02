@@ -1,7 +1,10 @@
 # Application logging standard
 
-**Version:** 1.0 (2026-10-31). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
+**Version:** 1.1 (2026-11-02). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
 reviewing a service's logging.
+
+**Changes in 1.1:** stack-specific details moved to "Reference implementation (Node/React)"
+callouts; links to the security and privacy standards.
 
 This is the standard all our services follow, so that every service's logs can be collected,
 searched and correlated the same way (on a VM with Docker today, on Kubernetes tomorrow), and so
@@ -11,7 +14,9 @@ that no log ever becomes a leak of personal data.
 incidents. They are short-lived, may be sampled, and must never be the only record of who did
 what. "Who did what, when, to what, and who saw what" belongs in the audit log, which has its own
 standard ([`audit-log.md`](audit-log.md)). Errors also go to error tracking (Sentry or equivalent), and
-numbers go to metrics (Prometheus or equivalent).
+numbers go to metrics (Prometheus or equivalent). What may never appear in a log is also a privacy
+rule ([privacy standard](privacy.md)); which security events must be logged is in the [security
+standard](security.md).
 
 **If you are an agent implementing this in a project:**
 
@@ -109,6 +114,11 @@ The names are part of the standard:
 - In containers the root filesystem should be read-only; nothing in the logging setup may need to
   write to it.
 
+> **Reference implementation (Node/React).** winston with a JSON format on a console transport, a
+> format that adds the base fields and the request id, and the shared scrubber as the last format
+> before output; `winston-daily-rotate-file` only when `LOGS_DIR` is set. `NODE_ENV` gives `env`;
+> the image's build argument (git SHA) gives `version`.
+
 ## 5. Request id and the access event
 
 **Request id:**
@@ -143,6 +153,10 @@ too).
   seconds. They are still counted in metrics.
 - Behind a reverse proxy or ingress, configure the framework's trusted-proxy setting so the client IP
   (before hashing) is the real one.
+
+> **Reference implementation (Node/React).** The request id and context live in `AsyncLocalStorage`
+> (`util/request-context.js`); the access event is a small middleware on the response's `finish` and
+> `close` events (no morgan); Express `app.set("trust proxy", 1)` behind one proxy.
 
 ## 6. Redaction
 
@@ -185,6 +199,10 @@ A project adds its own sensitive domain keys to this list; it never removes one.
   string), cap the depth, and survive circular objects.
 - A test proves that an e-mail, a phone number, a Bearer token, a JWT and a `{ password }` field
   passed to the logger never come out in any format.
+
+> **Reference implementation (Node/React).** One module (`util/error-reporting-scrubber.js`) exports
+> `scrubText` and `scrubData`; the logger's last format and Sentry's `beforeSend` /
+> `beforeBreadcrumb` both call it, and Sentry's `sendDefaultPii` is off.
 
 ## 7. Background jobs and startup
 

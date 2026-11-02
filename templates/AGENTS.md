@@ -48,17 +48,22 @@ This project follows [repo-standards](https://github.com/MonsterOfCode/repo-stan
 
 | Standard       | Version | Exceptions (decision) |
 | -------------- | ------- | --------------------- |
-| Architecture   | 1.0     | <none / Dn>           |
-| Agents         | 1.0     |                       |
-| Testing        | 1.0     |                       |
-| Commit checks  | 1.0     |                       |
-| Logging        | 1.0     |                       |
-| Audit log      | 1.0     |                       |
-| Service health | 1.0     |                       |
+| Architecture   | 1.1     | <none / Dn>           |
+| API            | 1.0     |                       |
+| Security       | 1.0     |                       |
+| Privacy        | 1.0     |                       |
+| Agents         | 1.1     |                       |
+| Testing        | 1.1     |                       |
+| Commit checks  | 1.1     |                       |
+| CI/CD          | 1.0     |                       |
+| Logging        | 1.1     |                       |
+| Audit log      | 1.1     |                       |
+| Service health | 1.1     |                       |
 
 ## Architecture map
 
-<The layer folders that exist, one line each, and one current example per kind of change:>
+<The layer folders that exist (or the feature layout, if a decision chose feature folders), one line
+each, and one current example per kind of change:>
 
 ```text
 src/
@@ -87,12 +92,12 @@ npm run migrate        # <migrations, and on which database>
 
 ## Local environment
 
-| What      | Where                         |
-| --------- | ----------------------------- |
-| API       | <http://localhost:port>       |
-| Database  | <container, port, database>   |
-| Email     | <mail catcher URL>            |
-| Accounts  | <how to get a local account>  |
+| What     | Where                        |
+| -------- | ---------------------------- |
+| API      | <http://localhost:port>      |
+| Database | <container, port, database>  |
+| Email    | <mail catcher URL>           |
+| Accounts | <how to get a local account> |
 
 ## Where things are
 

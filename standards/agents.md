@@ -1,7 +1,10 @@
 # Agents standard
 
-**Version:** 1.0 (2026-10-31). **For:** every project of ours. **Audience:** the developer setting up
+**Version:** 1.1 (2026-11-02). **For:** every project of ours. **Audience:** the developer setting up
 a repository, and the AI agents (Claude Code, Codex, Cursor...) that work in it.
+
+**Changes in 1.1:** AG-7 names the project's `verify` command instead of an npm script; the
+agent-specific locations (`CLAUDE.md`, `.claude/skills/`) are marked as the reference setup.
 
 An agent starts every session without memory. What it knows about a project is what the repository
 tells it: the rules, the current state, the decisions already taken and how to prove a change works.
@@ -32,14 +35,14 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 
 ## 2. The files every repository has
 
-| File                         | What it holds                                                                 | Who updates it                    |
-| ---------------------------- | ----------------------------------------------------------------------------- | --------------------------------- |
-| `AGENTS.md`                  | the agent guide: what the project is, hard rules, how to work, architecture map, commands, where things are | the developer, agents on request |
-| `CLAUDE.md`                  | one line, `@AGENTS.md`, so Claude Code loads the same guide (plus Claude-only notes, if any) | rarely                            |
-| `STATUS.md`                  | the current state: where things stand, recently done, in flight, open questions, environment notes | **every agent, after every task** |
-| `docs/decisions.md`          | the decision log (D1, D2, ...): context, decision, why, consequences          | agents and developers, append-only |
-| `docs/` (see section 5)      | architecture, reference specs, runbooks, the project's page/layout standard   | with the change that alters them  |
-| `.claude/skills/` (optional) | the project's skills: verify, decision, handoff, review                       | the developer                     |
+| File                         | What it holds                                                                                               | Who updates it                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `AGENTS.md`                  | the agent guide: what the project is, hard rules, how to work, architecture map, commands, where things are | the developer, agents on request   |
+| `CLAUDE.md`                  | one line, `@AGENTS.md`, so Claude Code loads the same guide (plus Claude-only notes, if any)                | rarely                             |
+| `STATUS.md`                  | the current state: where things stand, recently done, in flight, open questions, environment notes          | **every agent, after every task**  |
+| `docs/decisions.md`          | the decision log (D1, D2, ...): context, decision, why, consequences                                        | agents and developers, append-only |
+| `docs/` (see section 5)      | architecture, reference specs, runbooks, the project's page/layout standard                                 | with the change that alters them   |
+| `.claude/skills/` (optional) | the project's skills: verify, decision, handoff, review                                                     | the developer                      |
 
 - **AG-1 — One guide for every agent.** `AGENTS.md` is read by Codex, Cursor and others;
   `CLAUDE.md` imports it with `@AGENTS.md`. The rules are never maintained twice.
@@ -84,14 +87,14 @@ In this order (template: [`templates/AGENTS.md`](../templates/AGENTS.md)):
 
 ## 5. `docs/`
 
-| Document                     | Answers                                                    |
-| ---------------------------- | ---------------------------------------------------------- |
-| `decisions.md`               | why is it like this                                        |
-| `reference/business-logic.md`| what must the product do (the verified business rules)     |
-| `architecture.md`            | how the project applies the architecture standard          |
-| `layout-standards.md` (frontend) | how to build a list, a detail page, a dialog, a form   |
-| `testing.md`                 | how to run the tests, end-to-end setup, known gotchas      |
-| `deploy/`                    | environments, runbooks, an append-only log of every server action |
+| Document                         | Answers                                                           |
+| -------------------------------- | ----------------------------------------------------------------- |
+| `decisions.md`                   | why is it like this                                               |
+| `reference/business-logic.md`    | what must the product do (the verified business rules)            |
+| `architecture.md`                | how the project applies the architecture standard                 |
+| `layout-standards.md` (frontend) | how to build a list, a detail page, a dialog, a form              |
+| `testing.md`                     | how to run the tests, end-to-end setup, known gotchas             |
+| `deploy/`                        | environments, runbooks, an append-only log of every server action |
 
 Only the documents the project needs. A document that is no longer true is fixed or deleted.
 
@@ -102,9 +105,10 @@ Only the documents the project needs. A document that is no longer true is fixed
   decisions on the topic. Never approximate from memory or a screenshot: read the code.
 - **AG-6 — Follow the existing pattern.** The project's way of doing a thing wins over the agent's
   habit. When the pattern is wrong, say so and fix it everywhere, not in one place (ARCH-5).
-- **AG-7 — Verified means verified.** A task is done only when `npm run verify` passes (checks + tests
-  at 100% coverage + build) and, for any UI change, the agent has looked at it in a browser (desktop
-  and phone width, light and dark). Failures are reported with their output, never hidden.
+- **AG-7 — Verified means verified.** A task is done only when the project's `verify` command
+  (reference: `npm run verify`) passes (checks + tests at 100% coverage + build) and, for any UI
+  change, the agent has looked at it in a browser (desktop and phone width, light and dark).
+  Failures are reported with their output, never hidden.
 - **AG-8 — Ask only for real decisions.** Product and design choices belong to a person; everything
   else the agent decides, then says plainly what it decided so it is easy to redirect.
 - **AG-9 — Never commit, stage or push** unless asked in the current conversation. Permission for one
@@ -126,7 +130,9 @@ Only the documents the project needs. A document that is no longer true is fixed
 ## 7. Skills
 
 Optional but recommended: the repetitive procedures as skills (templates in
-[`templates/skills/`](../templates/skills/)), so every agent runs them the same way:
+[`templates/skills/`](../templates/skills/)), so every agent runs them the same way. The reference
+setup is Claude Code's `.claude/skills/<name>/SKILL.md`; for another agent, put the same steps
+where that agent reads them, or in `AGENTS.md`.
 
 - **verify** — runs the full checks for what changed and reports the numbers.
 - **decision** — adds a decision with the next free number, in the right log and format.

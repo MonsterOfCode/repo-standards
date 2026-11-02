@@ -6,7 +6,7 @@ import { join, relative, resolve } from "node:path";
 import { compile } from "tailwindcss";
 import { checkCssClasses, collectClassUsages, isTailwindBuiltIn, parseCssClasses } from "./lib/css-classes.mjs";
 
-// The application's own CSS class prefix: set it per project ("domi-", "acme-", ...).
+// The application's own CSS class prefix: set it per project ("acme-", "ledger-", ...).
 const PREFIX = process.env.CSS_CLASS_PREFIX ?? "app-";
 
 // Classes that appear in our selectors but are not ours, so they keep their own names.

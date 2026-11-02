@@ -1,7 +1,10 @@
 # Commit checks standard
 
-**Version:** 1.0 (2026-10-31). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
+**Version:** 1.1 (2026-11-02). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
 setting up or reviewing a project's git hooks and CI checks.
+
+**Changes in 1.1:** the rules name the `checks` and `verify` commands generically; the npm, husky,
+Prettier, ESLint and commitlint specifics are marked as the reference implementation (Node/React).
 
 Every commit must pass the same fast checks, every push the full test gate, and every commit
 message the same format, locally and again in CI. This standard lists the checks, says what each
@@ -21,47 +24,57 @@ must verify, and provides reference scripts and configuration in this repository
 
 The key words **must**, **must not** and **should** mean what they say.
 
+The rules are stack-agnostic. Lines marked **Reference (Node/React)** point to the reference
+implementation in this repository (npm scripts, husky hooks, Prettier, ESLint, commitlint, Node
+check scripts); a project on another stack keeps the rule and uses its own tools. In this standard,
+`checks` is the project's command that runs every fast check, and `verify` the one that runs the
+checks plus the tests with coverage (plus the build); in the reference they are `npm run checks`
+and `npm run verify`.
+
 ## 1. Prerequisites on every developer machine
 
-| Tool                                                   | Why                                                                         | Install                                    |
-| ------------------------------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------ |
-| Node.js (the project's version)                        | runs the checks                                                             | per project                                |
+| Tool                                                   | Why                                                                                           | Install                                                |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| the project's runtime (e.g. Node.js, its version)      | runs the checks                                                                               | per project                                            |
 | [gitleaks](https://github.com/gitleaks/gitleaks) 8.19+ | scans the staged changes for secrets; **the pre-commit hook refuses every commit without it** | `brew install gitleaks`, check with `gitleaks version` |
 
 - The project's `README`/setup document lists gitleaks as a prerequisite, and the hook's error
   message says how to install it. A missing tool must never be skipped silently.
-- `npm install` activates the hooks (husky through the `prepare` script). No manual step.
+- Installing the project's dependencies activates the hooks. No manual step.
+  Reference (Node/React): husky, activated by the `prepare` script on `npm install`.
 
 ## 2. Hooks
 
-| Hook         | Runs                                                                         | Target time |
-| ------------ | ---------------------------------------------------------------------------- | ----------- |
-| `pre-commit` | gitleaks on the staged changes, then `npm run checks` (every fast check of sections 3–5) | < 30 s      |
-| `commit-msg` | commitlint (section 6)                                                       | < 1 s       |
-| `pre-push`   | `npm run verify`: the checks, then the tests with 100% coverage (testing standard), and the build for a frontend | minutes     |
+| Hook         | Runs                                                                                                     | Target time |
+| ------------ | -------------------------------------------------------------------------------------------------------- | ----------- |
+| `pre-commit` | gitleaks on the staged changes, then `checks` (every fast check of sections 3–5)                         | < 30 s      |
+| `commit-msg` | the commit message check (section 6)                                                                     | < 1 s       |
+| `pre-push`   | `verify`: the checks, then the tests with 100% coverage (testing standard), and the build for a frontend | minutes     |
 
-- `npm run checks` runs every fast check, and `npm run verify` runs checks plus tests (plus build).
-- **CI runs `npm run verify`** on every push and pull request, commitlint on the pushed commits, and
-  gitleaks on the whole history.
+- `checks` runs every fast check, and `verify` runs checks plus tests (plus build).
+- **CI runs `verify`** on every push and pull request, the commit message check on the pushed
+  commits, and gitleaks on the whole history ([CI/CD standard](ci-cd.md)).
 - Hooks are never bypassed (`--no-verify`). A failing hook is fixed, or the check is fixed if it is
   wrong, in its own commit.
 
-Reference hooks: `config/husky/node-backend/` and `config/husky/react-frontend/`.
+Reference (Node/React): hooks in `config/husky/node-backend/` and `config/husky/react-frontend/`.
 
 ## 3. Checks for every project
 
 ### 3.1 Formatting and lint
 
-- `prettier --check .` (or the stack's formatter) with no difference.
-- The linter (ESLint, ...) with **zero warnings** (`--max-warnings 0`).
+- The stack's formatter in check mode, with no difference.
+- The linter with **zero warnings**.
 - Committed docs, JSON and config files are formatted too.
+
+Reference (Node/React): `prettier --check .` and `eslint . --max-warnings 0`.
 
 ### 3.2 Architecture
 
-`npm run check:architecture`: the layer rules of the architecture standard (ARCH-B1–B7 for a
-backend, ARCH-F1–F7 for a frontend) with dependency-cruiser, no violation.
+`check:architecture`: the layer rules of the architecture standard (ARCH-B1–B7 for a backend,
+ARCH-F1–F7 for a frontend), checked by a dependency tool, with no violation.
 
-Reference: `config/dependency-cruiser/`.
+Reference (Node/React): dependency-cruiser with `config/dependency-cruiser/`.
 
 ### 3.3 Translations
 
@@ -79,7 +92,7 @@ frontend's against each other. There is no comparison between backend and fronte
 - **Frontend:** every key used in the code exists, and every key in the reference locale is used.
   Keys only the API sends are an explicit, commented allow-list.
 
-Reference: `scripts/node-backend/check-locales.js` + `checks/locale-check.js`,
+Reference (Node/React): `scripts/node-backend/check-locales.js` + `checks/locale-check.js`,
 `scripts/react-frontend/check-translations.mjs` + `lib/translations.mjs`.
 
 ### 3.4 Secrets
@@ -88,7 +101,7 @@ Reference: `scripts/node-backend/check-locales.js` + `checks/locale-check.js`,
 default rules. Its allow-list only covers values that are fake by design, such as test fixtures.
 A real secret is never allow-listed: rotate it and rewrite history.
 
-Reference: `config/gitleaks.toml`.
+Reference (Node/React): `config/gitleaks.toml`.
 
 ### 3.5 `.env.example` parity
 
@@ -98,7 +111,7 @@ Reference: `config/gitleaks.toml`.
 - Deployment env examples only name known variables.
 - Variables read outside the config module (scripts, Docker) are an explicit, commented allow-list.
 
-Reference: `scripts/node-backend/check-env-example.js`, `scripts/react-frontend/check-env-example.mjs`.
+Reference (Node/React): `scripts/node-backend/check-env-example.js`, `scripts/react-frontend/check-env-example.mjs`.
 
 ## 4. Backend checks
 
@@ -115,7 +128,7 @@ sample values, and for every builder and every language:
 - every translation key the email used exists in every locale;
 - an exported builder missing from the catalogue fails the check.
 
-Reference: `scripts/node-backend/check-emails.js` + `checks/email-check.js`.
+Reference (Node/React): `scripts/node-backend/check-emails.js` + `checks/email-check.js`.
 
 ### 4.2 Migrations: final state before production, changes only after
 
@@ -131,13 +144,12 @@ Reference: `scripts/node-backend/check-emails.js` + `checks/email-check.js`.
 
 **Immutability once in production:**
 
-
 Migrations are an append-only log **once they run in production**: an environment that already ran
 a migration never runs its new version, so editing it makes environments silently diverge.
 
 - `migrations.lock.json` maps each migration released to production to the SHA-256 of its content.
-  `npm run migrations:lock` writes it. It is run and committed as part of preparing a production
-  release.
+  The `migrations:lock` command (reference: `npm run migrations:lock`) writes it. It is run and
+  committed as part of preparing a production release.
 - The check fails when a locked migration was modified, renamed or deleted, or when the lock lists a
   file that doesn't exist.
 - The production release pipeline runs the check in release mode: every migration of the released
@@ -148,7 +160,7 @@ a migration never runs its new version, so editing it makes environments silentl
 - The migration contract is also checked: file naming with a timestamp, `up`/`down` exported,
   self-contained (no app imports).
 
-Reference: `scripts/node-backend/check-migrations-lock.js` + `checks/migrations-lock.js`,
+Reference (Node/React): `scripts/node-backend/check-migrations-lock.js` + `checks/migrations-lock.js`,
 `check-migration-contract.js`.
 
 ### 4.3 Route documentation (OpenAPI)
@@ -161,14 +173,14 @@ Reference: `scripts/node-backend/check-migrations-lock.js` + `checks/migrations-
 - Routers that intentionally have no docs (the docs router itself, test-only hooks) are an explicit
   allow-list.
 
-Reference: `scripts/node-backend/check-route-docs.js` + `checks/route-docs-check.js`.
+Reference (Node/React): `scripts/node-backend/check-route-docs.js` + `checks/route-docs-check.js`.
 
 ## 5. Frontend checks
 
 ### 5.1 CSS class prefix and usage
 
-Every CSS class **we define** carries the application's unique prefix (`domi-` for Domi, `acme-`
-for Acme...), so our classes never collide with a framework's and can be found and removed safely.
+Every CSS class **we define** carries the application's unique prefix (`acme-` for an app called Acme,
+`ledger-` for one called Ledger...), so our classes never collide with a framework's and can be found and removed safely.
 
 - **Defined classes:** every class in our `.css` selectors and every Tailwind `@utility` starts with
   the prefix.
@@ -189,7 +201,7 @@ for Acme...), so our classes never collide with a framework's and can be found a
 When the check finds an unprefixed class, its message says how to fix it: rename **our** class to
 the prefix, or, if the class belongs to a library, add the library's prefix to the allow-list.
 
-Reference: `scripts/react-frontend/check-css.mjs` + `lib/css-classes.mjs` (prefix through
+Reference (Node/React): `scripts/react-frontend/check-css.mjs` + `lib/css-classes.mjs` (prefix through
 `CSS_CLASS_PREFIX` or the constant at the top; library prefixes in `FOREIGN_CLASS_PREFIXES`).
 
 ## 6. Commit messages
@@ -212,11 +224,12 @@ docs: describe the release steps
 - **Rejected:** `wip`, `Feat: x`, `feat:#1 x`, `feat(Billing): x`, `feat: x.`, `feat: #12` (issue
   with no subject).
 
-Reference: `config/commitlint.config.js` (self-contained; `npm i -D @commitlint/cli`).
+Reference (Node/React): commitlint with `config/commitlint.config.js` (self-contained;
+`npm i -D @commitlint/cli`).
 
 ## 7. Scripts: how they behave
 
-- One command per check, `npm run check:<name>`, and `npm run checks` to run them all.
+- One command per check, `check:<name>`, and `checks` to run them all (reference: `npm run check:<name>`).
 - Each prints `✓ <what> ok` when it passes. Otherwise it lists every problem (file, key or class,
   and what is wrong) and exits 1.
 - The check logic lives in a module covered by the test suite, tested on fixtures and on the real
@@ -226,8 +239,8 @@ Reference: `config/commitlint.config.js` (self-contained; `npm i -D @commitlint/
 ## 8. Checklist
 
 - [ ] gitleaks is a documented prerequisite, and the hook's error says how to install it.
-- [ ] `npm install` activates the hooks: pre-commit (gitleaks + checks), commit-msg (commitlint), pre-push (verify).
-- [ ] `npm run checks` and `npm run verify` exist, and CI runs `verify`, commitlint on the pushed commits and gitleaks on the history.
+- [ ] Installing the dependencies activates the hooks: pre-commit (gitleaks + checks), commit-msg (message check), pre-push (verify).
+- [ ] `checks` and `verify` exist, and CI runs `verify`, the message check on the pushed commits and gitleaks on the history.
 - [ ] Formatting and lint: no differences, zero warnings.
 - [ ] Architecture: `check:architecture` with no violation.
 - [ ] Translations: same keys, same variables per key, plural families, no empty values, language rules; frontend: used and unused keys.

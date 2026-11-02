@@ -1,20 +1,31 @@
 # Architecture standard
 
-**Version:** 1.0 (2026-10-31). **For:** every project of ours, backend and frontend. **Audience:**
+**Version:** 1.1 (2026-11-02). **For:** every project of ours, backend and frontend. **Audience:**
 the developer, or the AI agent, building or reviewing code in a project.
+
+**Changes in 1.1:** layer-first folders are the recommended default, no longer mandatory (ARCH-1,
+section 2); stack-specific details moved to "Reference implementation (Node/React)" callouts; the
+honeypot (ARCH-V9) uses a name no autofill matches and a required minimum fill time.
 
 Every project is organized the same way, so anyone (person or agent) opening any of our repos knows
 where a file lives before searching for it, which layer may call which, and where a rule belongs.
 This standard defines the folders, the layers and their dependencies, the naming, and the code
 rules that keep a project legible as it grows. The layer rules are checked on every commit.
 
+The rules are stack-agnostic. Where a rule needs a concrete tool, folder or library name, it is
+given in a **Reference implementation (Node/React)** callout: our reference stack is a Node/Express
+API with Zod and MongoDB, and a React SPA with Redux Toolkit Query and Vite. A project on another
+stack keeps the rule and picks its own equivalent.
+
 **If you are an agent working in a project:**
 
 1. Read the whole standard before writing code. Then read the project's `AGENTS.md`, its decision
    log and the files next to the one you change: the project's existing pattern wins over your
    habit, as long as it follows this standard.
-2. Before creating a file, find its layer (sections 3 and 4) and its name (section 5). Before
-   creating a function, search for an existing one that does the same thing (ARCH-4).
+2. Find out whether the project is organised by layer (the default) or by feature (a recorded
+   decision, section 2.3). Before creating a file, find its layer (sections 3 and 4) and its name
+   (section 5). Before creating a function, search for an existing one that does the same thing
+   (ARCH-4).
 3. When no rule fits, choose the cleanest solution and record it in the decision log (section 10).
 4. When reviewing, cite the rule you apply by its ID ("violates ARCH-B2").
 
@@ -24,11 +35,12 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 
 ## 1. Principles
 
-- **ARCH-1 — Layer first, never feature folders.** Top-level folders are layers (the technical role
-  of a file). There is no `features/<x>/` folder holding its own api, components, hooks and pages.
-  See section 2.
+- **ARCH-1 — Layer first by default; feature folders only by recorded decision.** By default,
+  top-level folders are layers (the technical role of a file), and the file name carries the
+  feature. A project may organise by feature instead, if it records that decision and its reasons in
+  its decision log and keeps the dependency rules (section 2).
 - **ARCH-2 — Dependencies point one way.** A layer imports only the layers below it (sections 3 and
-  4). No import cycles.
+  4), whatever the folder layout. No import cycles.
 - **ARCH-3 — The backend is the authority.** Permissions, visibility, validation and business math
   live in the backend. The frontend only reflects what the API returns: it never decides access from
   a role name and never recomputes a price.
@@ -43,15 +55,27 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 - **ARCH-7 — Explicit over magic.** No global mutable state, no implicit registration by file name,
   no monkey-patching. A reader follows the imports to find what runs.
 
-## 2. Folders: layer first (ARCH-1)
+## 2. Folders (ARCH-1)
 
-Feature folders (`features/billing/{api,components,hooks,pages,store}`) look tidy on day one and
-become confusing fast: shared code gets stuck inside one feature or imported across features,
-every feature invents its own internal layout, and nobody remembers in which feature a file was put.
-We organize by layer instead:
+### 2.1 The trade-off
+
+|                  | Layer first (the default)                                                                         | Feature folders                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Where is a file? | one place per kind of file: every router in `routers/`, every page in `pages/`                    | everything of one feature together: `features/billing/`                                                                  |
+| Which feature?   | the file name carries it (`billing-price-service.js`); search by name                             | the folder carries it                                                                                                    |
+| Strengths        | one layout for the whole repo; shared code has an obvious home; layer rules are simple path rules | cohesion: a feature is read, reviewed, moved or deleted as one folder                                                    |
+| Costs            | a feature is spread across folders; file names must be disciplined                                | shared code needs a home and a rule; cross-feature imports need rules; each feature tends to invent its own inner layout |
+| Fits best        | most product codebases, where features share models, permissions and components                   | large codebases with clearly bounded features, often owned by different teams                                            |
+
+Both work if the rules are written down and checked. Layer first is our default because the
+failure mode of feature folders (shared code stuck inside one feature, or imported across features
+in every direction) is common and expensive to undo, while the cost of layer first (disciplined file
+names) is cheap and checkable.
+
+### 2.2 Layer first (default)
 
 - **The layer answers "where is it?"** A router is in `routers/`, a service in `services/`, an API
-  slice in `store/api/`, a page in `pages/`. There is one place to look.
+  module in `store/api/`, a page in `pages/`. There is one place to look.
 - **The file name answers "which feature?"** Every file name carries its domain (section 5), so all
   the files of a feature are found by searching its name: `billing-price` finds
   `billing-prices-router.js`, `billing-price-service.js`, `billing-price.js` (model),
@@ -60,7 +84,7 @@ We organize by layer instead:
   `models/billing/`, `pages/invoices/`. The group lives inside the layer, never the other way round.
 
 ```text
-Bad (feature folders)                    Good (layer first, domain in the name)
+Feature folders                          Layer first, domain in the name
 src/features/billing/api.js              src/routers/billing-prices-router.js
 src/features/billing/service.js          src/services/billing-price-service.js
 src/features/billing/model.js            src/models/billing/billing-price.js
@@ -68,29 +92,55 @@ src/features/billing/utils.js            src/domain/invoice-totals.js
 src/features/invoices/...                src/services/invoice-service.js
 ```
 
-## 3. Backend layers (Node API)
+### 2.3 Feature folders (by recorded decision)
 
-| Layer          | Holds                                                                                                     | May import                                                     |
-| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `routers/`     | HTTP: validate the input, require the permission, call **one** service function, shape the response, document the route | services, policies, middleware, model schemas and constants, errors, config, util |
-| `services/`    | use cases: orchestrate, open transactions, write audit events, call models and adapters                   | services, domain, policies, models, adapters, database, emails |
-| `domain/`      | pure business rules: calculations, state machines, matching. No I/O                                       | domain, model schemas and constants, util, config, errors      |
-| `policies/`    | authorization: who may see or do what, and the query filters that enforce it                             | domain, models, services (to read), util, config, errors       |
-| `models/`      | one file per collection: schema, enums, document factory, data access                                    | database, other models, util, config, errors                   |
-| `adapters/`    | one client per external service, behind the interface the services use; timeouts, retries, error mapping | util, config, errors                                           |
-| `jobs/`        | scheduled jobs: a lock, a call to a service, a run record                                                | services, database (the job lock), util, config               |
-| `middleware/`  | cross-cutting HTTP concerns: auth, CSRF, rate limit, access log, errors                                  | services, policies, util, config, errors                       |
-| `database/`    | connection, transactions helper, the distributed job lock, migrations and their runner's config           | config, util                                                   |
-| `emails/`, `locales/` | message builders and translations                                                                  | util, config                                                   |
-| `config/`      | the only reader of environment variables (validated once at start), constants, allow-lists               | nothing from the layers above                                  |
-| `errors/`      | typed errors with stable codes                                                                            | nothing                                                        |
-| `util/`        | generic helpers with no product knowledge (dates, regex, concurrency, logger)                             | util, config, errors                                           |
+A project that organises by feature records it in its decision log (context, reasons, the
+alternatives considered) and follows these rules:
 
-Rules, checked on every commit (`npm run check:architecture`, section 9):
+- **The layers still exist inside each feature**, with the same names and the same direction of
+  dependencies (`features/billing/routers/`, `features/billing/services/`, or one file per layer
+  named after it). ARCH-B1 to B7 and ARCH-F1 to F7 apply inside every feature.
+- **A feature exposes a public entry** (an `index` file, or a documented list of files). Another
+  feature imports only from that entry, never from its internals, and only in the direction of the
+  layers (a service may call another feature's service; a model never imports another feature's
+  service).
+- **No cycles between features.** Two features that need each other move the shared part into a
+  lower, shared place.
+- **Shared code has one home**, outside every feature (`shared/`, or the plain layer folders
+  `util/`, `config/`, `errors/`, `components/ui/`), and a piece of code moves there the moment a
+  second feature needs it.
+- **Every feature has the same inner layout.** The project documents it once (in `AGENTS.md` or
+  `docs/architecture.md`).
+- File names still carry their domain (ARCH-N1), so a search by name works in both layouts.
 
-- **ARCH-B1** — Only the composition roots (app entry, root router, OpenAPI aggregator, a test-only
-  hooks router), listed explicitly in the check's configuration, import routers and jobs. A service
-  never imports a job: what both need (a job's lock id, its schedule) lives in `config/`.
+## 3. Backend layers
+
+| Layer                 | Holds                                                                                                                                                    | May import                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `routers/`            | HTTP (routers, controllers, handlers): validate the input, require the permission, call **one** service function, shape the response, document the route | services, policies, middleware, model schemas and constants, errors, config, util |
+| `services/`           | use cases: orchestrate, open transactions, write audit events, call models and adapters                                                                  | services, domain, policies, models, adapters, database, emails                    |
+| `domain/`             | pure business rules: calculations, state machines, matching. No I/O                                                                                      | domain, model schemas and constants, util, config, errors                         |
+| `policies/`           | authorization: who may see or do what, and the query filters that enforce it                                                                             | domain, models, services (to read), util, config, errors                          |
+| `models/`             | one file per collection or table: schema, enums, record factory, data access                                                                             | database, other models, util, config, errors                                      |
+| `adapters/`           | one client per external service, behind the interface the services use; timeouts, retries, error mapping                                                 | util, config, errors                                                              |
+| `jobs/`               | scheduled jobs: a lock, a call to a service, a run record                                                                                                | services, database (the job lock), util, config                                   |
+| `middleware/`         | cross-cutting HTTP concerns: auth, CSRF, rate limit, access log, errors                                                                                  | services, policies, util, config, errors                                          |
+| `database/`           | connection, transactions helper, the distributed job lock, migrations and their runner's config                                                          | config, util                                                                      |
+| `emails/`, `locales/` | message builders and translations                                                                                                                        | util, config                                                                      |
+| `config/`             | the only reader of environment variables (validated once at start), constants, allow-lists                                                               | nothing from the layers above                                                     |
+| `errors/`             | typed errors with stable codes                                                                                                                           | nothing                                                                           |
+| `util/`               | generic helpers with no product knowledge (dates, regex, concurrency, logger)                                                                            | util, config, errors                                                              |
+
+The folder names are the reference; a framework with its own names (`controllers/`,
+`repositories/`) maps them one to one and says so in the project's `AGENTS.md`.
+
+Rules, checked on every commit (section 9):
+
+- **ARCH-B1** — Only the composition roots (app entry, root router, API-documentation aggregator, a
+  test-only hooks router), listed explicitly in the check's configuration, import routers and jobs.
+  In a feature-organised project, a feature's routers and jobs are likewise imported only by the
+  composition roots, never by another feature or by a service. A service never imports a job: what
+  both need (a job's lock id, its schedule) lives in `config/`.
 - **ARCH-B2** — A router never touches the database or an adapter. It may import a model's **schema
   and constants** for validation, never its data access.
 - **ARCH-B3** — `domain/` is pure: no database, service, adapter, router, job or email.
@@ -103,51 +153,59 @@ Rules, checked on every commit (`npm run check:architecture`, section 9):
 
 Rules checked by review:
 
-- **ARCH-B8 — Validate at the edge.** Every `body`, `query` and `params` is parsed by a schema (Zod)
-  in the router before any service call, and a refusal is a 422 in the format of section 6.
+- **ARCH-B8 — Validate at the edge.** Every body, query and path parameter is parsed by a schema in
+  the router before any service call, and a refusal is a 422 in the format of section 6.
 - **ARCH-B9 — Thin routers, thin jobs.** A router or a job holds no business rule: if it has an
   `if` about the domain, that `if` belongs in a service or `domain/`.
 - **ARCH-B10 — Authorization in policies.** Never an ad-hoc role-name check (`if (user.role ===
-  "admin")`) in a router or service: a permission and a policy function. Lists are filtered in the
+"admin")`) in a router or service: a permission and a policy function. Lists are filtered in the
   query, not after loading.
-- **ARCH-B11 — Several writes, one transaction.** A change that writes more than one document (or a
-  document and its audit event) runs in one transaction. Errors propagate so the driver can retry.
+- **ARCH-B11 — Several writes, one transaction.** A change that writes more than one record (or a
+  record and its audit event) runs in one transaction. Errors propagate so the driver can retry.
 - **ARCH-B12 — Concurrency is explicit.** A record two people can edit carries a version; a stale
   save is a 409 with a stable code. Counters and balances change through atomic, guarded updates.
 - **ARCH-B13 — External calls through adapters.** Every external service has one adapter with a
   timeout, bounded retries with backoff for idempotent calls, and its errors mapped to our typed
   errors. A test replaces the adapter, never the network.
-- **ARCH-B14 — No N+1.** No awaited query per item in a loop: one batched query (`$in`, bulk write,
-  aggregation), or bounded concurrency for external calls. A legitimately sequential loop says why
-  in a comment.
+- **ARCH-B14 — No N+1.** No awaited query per item in a loop: one batched query (an `IN` list, a
+  bulk write, an aggregation), or bounded concurrency for external calls. A legitimately sequential
+  loop says why in a comment.
 - **ARCH-B15 — Every query has an index.** A test asserts the query plans of the main queries use an
-  index (no collection scan). Indexes are created by migrations only, never by the app at start.
+  index (no full scan). Indexes are created by migrations only, never by the app at start.
 - **ARCH-B16 — Typed errors, stable codes.** Errors are classes mapped to an HTTP status, with a
   stable `snake_case` code the frontend translates, in the body of section 6.2. A new situation gets
   a new code; a shipped code never changes meaning.
 
-## 4. Frontend layers (React SPA)
+> **Reference implementation (Node/React).** Express routers in `src/routers/`, named
+> `<domain>-router.js`; schemas with Zod (`Schema.parse(req.body)` in the router); MongoDB
+> transactions through a `withTransaction(session => ...)` helper in `database/`; batched reads with
+> `$in`; the query-plan test reads `explain()` and fails on `COLLSCAN`; the request context (request
+> id, abort signal) in `AsyncLocalStorage`.
 
-| Layer               | Holds                                                                                      | May import                                       |
-| ------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `routes/`           | the route tree, lazy loading and route guards                                             | pages, layout, components, hooks, store          |
-| `pages/<area>/`     | one `XPage.jsx` per route, its private subcomponents, its pure helpers (`xUi.js`)          | components, hooks, store, util, config, its own area |
-| `layout/`           | the app shell: sidebar, header, guards, banners                                           | components, hooks, store, util, config           |
-| `components/ui/`, `components/forms/` | design-system primitives and form controls                        | each other, util, config                         |
-| `components/<area>/`| product components shared by several pages                                                | components, hooks, store, util, config           |
-| `hooks/`            | reusable hooks (`useXxx`)                                                                 | store, util, config                              |
-| `store/`            | the state store; `store/api/<domain>Api.js`: every server call, one slice per domain       | util, config                                     |
-| `util/`             | plain functions (formatting, error mapping, the fetch wrapper)                            | util, config                                     |
-| `config/`, `locales/`, `styles/` | environment, navigation, i18n setup, translations, design tokens             | nothing from the layers above                    |
+## 4. Frontend layers
+
+| Layer                                 | Holds                                                                   | May import                                           |
+| ------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------- |
+| `routes/`                             | the route tree, lazy loading and route guards                           | pages, layout, components, hooks, store              |
+| `pages/<area>/`                       | one page module per route, its private subcomponents, its pure helpers  | components, hooks, store, util, config, its own area |
+| `layout/`                             | the app shell: sidebar, header, guards, banners                         | components, hooks, store, util, config               |
+| `components/ui/`, `components/forms/` | design-system primitives and form controls                              | each other, util, config                             |
+| `components/<area>/`                  | product components shared by several pages                              | components, hooks, store, util, config               |
+| `hooks/`                              | reusable hooks (or composables)                                         | store, util, config                                  |
+| `store/`                              | the state store; `store/api/`: every server call, one module per domain | util, config                                         |
+| `util/`                               | plain functions (formatting, error mapping, the fetch wrapper)          | util, config                                         |
+| `config/`, `locales/`, `styles/`      | environment, navigation, i18n setup, translations, design tokens        | nothing from the layers above                        |
 
 Rules, checked on every commit:
 
-- **ARCH-F1** — Pages are leaves: only the router imports a page module. The layout and the shared
-  components never import from `pages/`.
-- **ARCH-F2** — A page area never imports from another area. A helper or component two areas need
-  moves to `components/`, `hooks/` or `util/`, under a name that says what it is.
-- **ARCH-F3** — Only `store/api` (through the fetch wrapper in `util/`) talks to the server. No
-  `fetch`/axios in a page, component or hook.
+- **ARCH-F1** — Pages are leaves: only the route tree imports a page module. The layout and the
+  shared components never import from `pages/`.
+- **ARCH-F2** — A page area never imports from another area. In a feature-organised project, a
+  feature never imports another feature's pages or private components, only its public entry. A
+  helper or component two areas or features need moves to `components/`, `hooks/` or `util/` (or
+  `shared/`), under a name that says what it is.
+- **ARCH-F3** — Only the API layer (`store/api`, through the fetch wrapper in `util/`) talks to the
+  server. No direct HTTP call in a page, component or hook.
 - **ARCH-F4** — Primitives (`components/ui`, `components/forms`) never fetch data and never import a
   page, the layout or a product component. A filter that needs a lookup receives it as a prop.
 - **ARCH-F5** — `store/` never imports UI. **ARCH-F6** — `util/` never imports UI or the store.
@@ -156,8 +214,8 @@ Rules, checked on every commit:
 Rules checked by review:
 
 - **ARCH-F8 — Server state lives in the query cache.** Data from the API is read from the API
-  slice's hooks, never copied into local or global state. After a mutation, the cache is updated or
-  invalidated by tags, not refetched by hand.
+  layer's cache, never copied into local or global state. After a mutation, the cache is updated or
+  invalidated, not refetched by hand.
 - **ARCH-F9 — State in the URL when it should survive a refresh.** A list's page, sort, search and
   filters live in the URL, through one shared hook.
 - **ARCH-F10 — One pattern per kind of page.** Lists, detail pages, dialogs, forms and tabs follow
@@ -168,27 +226,36 @@ Rules checked by review:
 - **ARCH-F12 — Errors where the user looks.** Field errors (client check and API 422 alike) show
   under their inputs and focus the first one, general errors in the form's general area, and every
   failed submit shows a toast (section 6.4). Outcomes outside a form are toasts.
-- **ARCH-F13 — Styling in CSS, not in JS constants.** Shared visual states are named CSS utilities
+- **ARCH-F13 — Styling in CSS, not in code constants.** Shared visual states are named CSS utilities
   with the app's prefix (commit-checks standard, section 5.1). Light and dark themes and phone width
   are part of every UI change.
 - **ARCH-F14 — Accessible by default.** WCAG 2.2 AA: every control has a label, every dialog traps
   and returns focus, nothing is reachable only by mouse, contrast passes in both themes.
 
+> **Reference implementation (Node/React).** React with Vite; pages are `XPage.jsx` with their pure
+> helpers in `xUi.js`; the API layer is Redux Toolkit Query, one `store/api/<domain>Api.js` slice per
+> domain, invalidated by cache tags (ARCH-F8); no `fetch`/axios outside `util/` and `store/api`;
+> Tailwind CSS utilities declared with `@utility` under the app prefix.
+
 ## 5. Naming
 
-- **ARCH-N1 — The file name carries the domain and the role.** Backend (kebab-case):
-  `<domain>-router.js`, `<domain>-service.js`, `<domain>-policy.js`, `<domain>-adapter.js`
-  (`billing-bexio-adapter.js`), `<domain>-job.js`, `<entity>.js` for a model. Frontend:
-  `<Domain>Page.jsx`, `<domain>Ui.js`, `<domain>Api.js`, `use<Thing>.js`, `<Thing>.jsx`.
+- **ARCH-N1 — The file name carries the domain and the role**, in the casing convention of the
+  language. Backend: `<domain>-router`, `<domain>-service`, `<domain>-policy`, `<domain>-adapter`
+  (`billing-provider-adapter`), `<domain>-job`, `<entity>` for a model. Frontend: `<Domain>Page`,
+  `<domain>Ui`, `<domain>Api`, `use<Thing>`, `<Thing>` for a component.
 - **ARCH-N2 — The product's words.** Names use the product's vocabulary, the same word in the
   database, the API, the code and the UI. No synonyms (`client` here, `customer` there) and no
   generic names (`data`, `info`, `manager`, `helper`, `utils2`).
 - **ARCH-N3 — Names say the scope.** A constant or setting says which layer and what it governs
   (`HTTP_LEDGER_BODY_FIELDS_WITH_VALUES`, not `FIELDS`). A boolean reads as a question (`isActive`,
-  `hasPaidInvoice`). A function is a verb (`issueInvoice`, `listOpenRequests`).
-- **ARCH-N4 — Units in the name or the type.** Money in integer cents (`unitPriceCents`), durations
-  with their unit (`timeoutMs`, `retentionDays`), instants stored in UTC and shown in the user's
-  time zone.
+  `hasPaidInvoice`). A function is a verb (`issueInvoice`, `listOpenOrders`).
+- **ARCH-N4 — Units in the name or the type.** Money in integer minor units (`unitPriceCents`) or a
+  decimal type, durations with their unit (`timeoutMs`, `retentionDays`), instants stored in UTC and
+  shown in the user's time zone.
+
+> **Reference implementation (Node/React).** Backend files in kebab-case `.js`
+> (`billing-prices-router.js`); frontend components and pages in PascalCase `.jsx`, other modules in
+> camelCase `.js`.
 
 ## 6. Input validation, errors and bot traps
 
@@ -258,7 +325,8 @@ parameters into the sentence the user reads.
 - Other statuses: `400` malformed request (bad JSON, wrong content type), `401` not signed in, `403`
   not allowed, `404` not found or not visible, `409` conflict with the current state (stale
   version, already done, a business rule refusing the action), `429` rate limit, `503` a dependency
-  is down. Never `422` for those, and never `400` for a validation failure.
+  is down. Never `422` for those, and never `400` for a validation failure. The success body and
+  the rest of the HTTP contract are in the [API standard](api.md).
 
 ### 6.3 Rule keys
 
@@ -266,25 +334,25 @@ The rule keys are the validation rules' names, `validation.<rule>`, in `snake_ca
 meaning depends on the type of the value has the type as a suffix: `.string` (characters),
 `.numeric` (value), `.array` (items), `.file` (kilobytes).
 
-| Rule key                                | Parameters             | When                                                    |
-| --------------------------------------- | ---------------------- | ------------------------------------------------------- |
-| `validation.required`                   |                        | absent, null, empty string or empty list                |
-| `validation.required_if`, `validation.required_with` | `other`, `value` | required because of another field             |
-| `validation.string`, `validation.integer`, `validation.numeric`, `validation.boolean`, `validation.array`, `validation.date` | | wrong type |
-| `validation.email`, `validation.url`, `validation.uuid` |        | wrong format                                            |
-| `validation.regex`                      |                        | does not match the expected pattern                     |
-| `validation.in`                         | `values` (optional)    | not one of the allowed values                           |
-| `validation.min.string` / `.numeric` / `.array` / `.file` | `min` | too short, too small, too few, too light               |
-| `validation.max.string` / `.numeric` / `.array` / `.file` | `max` | too long, too big, too many, too heavy                 |
-| `validation.gt.*` / `validation.lt.*`  | `value`                | an exclusive bound: greater than / less than (`positive()`) |
-| `validation.between.*`, `validation.size.*` | `min`, `max` / `size` | out of a range, not the exact size                    |
-| `validation.decimal`                    | `decimal`              | too many decimals                                       |
-| `validation.after`, `validation.before`, `validation.after_or_equal`, `validation.before_or_equal` | `date` | date order |
-| `validation.confirmed`                  |                        | the confirmation field differs                          |
-| `validation.accepted`                   |                        | a checkbox that must be ticked (terms)                  |
-| `validation.unique`                     |                        | already taken (email, slug)                             |
-| `validation.exists`                     |                        | refers to something that does not exist or is not visible |
-| `validation.prohibited`                 |                        | must not be sent in this situation                      |
+| Rule key                                                                                                                     | Parameters            | When                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------- |
+| `validation.required`                                                                                                        |                       | absent, null, empty string or empty list                  |
+| `validation.required_if`, `validation.required_with`                                                                         | `other`, `value`      | required because of another field                         |
+| `validation.string`, `validation.integer`, `validation.numeric`, `validation.boolean`, `validation.array`, `validation.date` |                       | wrong type                                                |
+| `validation.email`, `validation.url`, `validation.uuid`                                                                      |                       | wrong format                                              |
+| `validation.regex`                                                                                                           |                       | does not match the expected pattern                       |
+| `validation.in`                                                                                                              | `values` (optional)   | not one of the allowed values                             |
+| `validation.min.string` / `.numeric` / `.array` / `.file`                                                                    | `min`                 | too short, too small, too few, too light                  |
+| `validation.max.string` / `.numeric` / `.array` / `.file`                                                                    | `max`                 | too long, too big, too many, too heavy                    |
+| `validation.gt.*` / `validation.lt.*`                                                                                        | `value`               | an exclusive bound: greater than / less than (positive)   |
+| `validation.between.*`, `validation.size.*`                                                                                  | `min`, `max` / `size` | out of a range, not the exact size                        |
+| `validation.decimal`                                                                                                         | `decimal`             | too many decimals                                         |
+| `validation.after`, `validation.before`, `validation.after_or_equal`, `validation.before_or_equal`                           | `date`                | date order                                                |
+| `validation.confirmed`                                                                                                       |                       | the confirmation field differs                            |
+| `validation.accepted`                                                                                                        |                       | a checkbox that must be ticked (terms)                    |
+| `validation.unique`                                                                                                          |                       | already taken (email, slug)                               |
+| `validation.exists`                                                                                                          |                       | refers to something that does not exist or is not visible |
+| `validation.prohibited`                                                                                                      |                       | must not be sent in this situation                        |
 
 - **The backend keeps a catalogue** of every key it can send (one file), and a test fails when the
   code sends a key that is not in it; the frontend's translation check requires a translation of
@@ -295,6 +363,11 @@ meaning depends on the type of the value has the type as a suffix: `.string` (ch
 - The messages live in the frontend's translations, one per key, with the parameters as variables
   (`"min": { "string": "At least {{min}} characters." }`). They never name the field: they are shown
   under it.
+
+> **Reference implementation (Node/React).** One `zodParse(schema, input)` helper turns every Zod
+> issue into this body (Zod's issue codes mapped to the keys above; a refinement carries its key as
+> its message); the key catalogue is one file in `config/`; the frontend has one form-errors hook
+> that maps the paths to its inputs.
 
 ### 6.4 How a form shows errors
 
@@ -319,24 +392,44 @@ Every form behaves the same way, whether the client check or the API found the p
 
 ### 6.5 Bot traps on public forms
 
-- **ARCH-V9 — Every form reachable without an account has a honeypot**: sign-up, contact, public
+- **ARCH-V9 — Every form reachable without an account has two bot traps**: sign-up, contact, public
   request, password reset, data-deletion request, newsletter.
-  - A text input named like a real field (`website`), hidden from people (visually hidden, not
-    `display: none`; `tabindex="-1"`, `autocomplete="off"`, `aria-hidden="true"`), sent with the
-    form. A person leaves it empty; a bot fills it.
-  - The backend checks it **after** the normal validation (a bot that sends invalid data gets the
-    same 422 as a person). When it is filled, the backend answers exactly like a success (same
+  - **A trap field.** A text input people never see and never fill, sent with the form. A bot that
+    fills every field fills it.
+    - **Its name, id and label match no autofill heuristic.** Browsers and password managers fill
+      fields by name, id, label and `autocomplete`, **hidden or not**. A trap named or labelled like
+      `website`, `url`, `email`, `name`, `company`, `phone` or `address` (or anything resembling
+      them, in any language) gets filled by a real person's autofill. Use a meaningless token
+      (`hp_check`) and a label that names no personal data ("Leave this empty").
+    - **`autocomplete` is set to a token browsers don't recognise** (e.g. `autocomplete="hp-ignore"`).
+      `autocomplete="off"` is not enough: several browsers and most password managers ignore it.
+    - Hidden from people: visually hidden off-screen (not `display: none`, which some bots skip),
+      `tabindex="-1"`, `aria-hidden="true"`.
+  - **A minimum fill time.** The form sends how long it was on screen before it was sent, in whole
+    milliseconds (`hp_elapsed`). Below the minimum (about **2 seconds**) nobody typed it, and the
+    request is treated like a filled trap. **An absent value is not a trap** (an API client without
+    the form). The minimum is configuration, so automated end-to-end tests can lower it.
+  - The backend checks the traps **after** the normal validation (a bot that sends invalid data gets
+    the same 422 as a person). When one fires, the backend answers exactly like a success (same
     status, same body shape, fresh random ids) and does nothing: no write, no email, no external
     call. The bot gets no signal it was detected.
-  - The detection is logged as a warning (route, hashed IP, app client), never with the submitted
-    content.
-  - The honeypot field is **not** in the public API documentation (OpenAPI): publishing its name
-    tells bot authors what to avoid.
+  - The detection is logged as a warning (route, hashed IP, app client, which trap fired), never
+    with the submitted content.
+  - The trap fields are **not** in the public API documentation: publishing their names tells bot
+    authors what to avoid.
+  - **Why so strict about autofill:** the decoy success looks exactly like a real one. A person
+    whose autofill filled the trap, or who was wrongly flagged, sees "thank you" while their sign-up
+    or request is silently dropped, and nobody reports a failure they cannot see.
 - **ARCH-V10 — Every public form also has its own rate limit**, tighter than the general one (e.g. a
-  few per minute and per hour per IP), answered `429` with its own code.
-- Optional, per form: a minimum fill time (a form submitted under ~2 seconds after it was rendered
-  is treated like a filled honeypot). A CAPTCHA only when the honeypot and the rate limit are proven
-  not enough.
+  few per minute and per hour per IP), answered `429` with its own code ([security
+  standard](security.md), SEC-R1).
+- A CAPTCHA only when the traps and the rate limit are proven not enough.
+
+> **Reference implementation (Node/React).** `util/honeypot.js` exports `honeypotFields()` (spread
+> into every public form's Zod body schema), `splitHoneypot(body)` (so the trap values never reach a
+> service) and `isHoneypotTriggered(req, trap)`; the minimum is a config value (default 2000 ms)
+> that the end-to-end environment lowers. The frontend has one trap-field component and one hook
+> that records when the form was first shown.
 
 ## 7. Code rules
 
@@ -352,14 +445,22 @@ Every form behaves the same way, whether the client check or the API found the p
 - **ARCH-C4 — Dead code is deleted.** Unused exports, files, translation keys, CSS classes and
   feature flags that are always on are removed in the same change that makes them unused.
 - **ARCH-C5 — Logging and audit.** Through the shared logger only (logging standard), audit events
-  through the audit service (audit-log standard). Never `console.log`.
-- **ARCH-C6 — Imports through the alias.** `#/services/x.js` or `@/app/...`, never `../../../`.
+  through the audit service (audit-log standard). Never a raw print to the console.
+- **ARCH-C6 — Imports through an alias.** Absolute imports from the source root, never long relative
+  chains (`../../../`).
 - **ARCH-C7 — Idempotent jobs and migrations.** A job or migration run twice gives the same result.
   A job takes a distributed lock and records its run (service-health standard).
 - **ARCH-C8 — Personal data is minimized.** Store only what the product needs, log none of it, and
-  give every collection holding personal data its retention and erasure path.
+  give every collection holding personal data its retention and erasure path ([privacy
+  standard](privacy.md)).
+
+> **Reference implementation (Node/React).** Config validated with Zod in `config/config.js`;
+> aliases `#/services/x.js` (package.json `imports`) in the backend and `@/app/...` (Vite alias) in
+> the frontend; ESLint `sonarjs/cognitive-complexity` at 15 and `no-console`.
 
 ## 8. Anti-patterns
+
+The examples are in the reference stack (JavaScript); the rule each one illustrates is in brackets.
 
 **Business rule in a router (ARCH-B9, ARCH-4).**
 
@@ -394,8 +495,8 @@ router.delete("/billing-prices/:id",                     // Good: a grantable, t
 **Query per item (ARCH-B14).**
 
 ```js
-for (const id of ids) users.push(await findUser(id));    // Bad: N round trips
-const users = await findUsers({ _id: { $in: ids } });    // Good: one query
+for (const id of ids) users.push(await findUser(id)); // Bad: N round trips
+const users = await findUsers({ _id: { $in: ids } }); // Good: one query
 ```
 
 **Two writes without a transaction (ARCH-B11).**
@@ -413,7 +514,7 @@ await withTransaction(async (session) => {               // Good: both commit or
 **Server data copied into state (ARCH-F8).**
 
 ```jsx
-const { data } = useGetInvoicesQuery(params);            // Bad: a second copy that goes stale
+const { data } = useGetInvoicesQuery(params); // Bad: a second copy that goes stale
 const [invoices, setInvoices] = useState([]);
 useEffect(() => setInvoices(data ?? []), [data]);
 
@@ -423,33 +524,47 @@ const { data: invoices = [] } = useGetInvoicesQuery(params); // Good: one source
 **Access decided in the frontend (ARCH-3).**
 
 ```jsx
-{user.role === "admin" && <DeleteButton />}               // Bad: the frontend guesses
-{record.allowedActions.includes("delete") && <DeleteButton />} // Good: the API says
+{
+  user.role === "admin" && <DeleteButton />;
+} // Bad: the frontend guesses
+{
+  record.allowedActions.includes("delete") && <DeleteButton />;
+} // Good: the API says
 ```
 
 **Helper imported across page areas (ARCH-F2).**
 
 ```js
-import { statusBadge } from "@/app/pages/requests/requestUi"; // Bad: in pages/patients/
-import { requestStatusBadge } from "@/app/util/requestStatus"; // Good: shared, named for what it is
+import { statusBadge } from "@/app/pages/orders/orderUi"; // Bad: in pages/invoices/
+import { orderStatusBadge } from "@/app/util/orderStatus"; // Good: shared, named for what it is
 ```
 
 ## 9. Enforcement
 
-- **`npm run check:architecture`** runs [dependency-cruiser](https://github.com/sverweij/dependency-cruiser)
-  with the layer rules (ARCH-B1–B7, ARCH-F1–F7). It is part of `npm run checks`, so it runs in the
-  pre-commit hook and in CI (commit-checks standard).
-  - Reference configuration: `config/dependency-cruiser/node-backend.cjs` and
-    `react-frontend.cjs` (+ `react-frontend.aliases.cjs` for the bundler's `@/` alias), copied to
-    the project root as `.dependency-cruiser.cjs`. Adapt the folder names at the top; keep the rules.
-  - `npm i -D dependency-cruiser`, then `"check:architecture": "depcruise src --config .dependency-cruiser.cjs"`.
+- **An automated dependency check** (`check:architecture`) enforces the layer rules (ARCH-B1–B7,
+  ARCH-F1–F7). It is part of the fast checks, so it runs in the pre-commit hook and in CI
+  (commit-checks standard).
+  - The rules are path rules: "files under `services/` may not import files under `jobs/`". In a
+    feature-organised project (section 2.3) the same rules are written with a wildcard for the
+    feature (`features/*/services/` may not import `features/*/jobs/`), plus two rules of its own:
+    a feature imports another feature only through its public entry, and features have no cycle.
   - An existing project that adopts the check fixes its violations; it does not add them to an
-    ignore list. While a large fix is in progress, a violation may be listed in the config's
-    `allowed` exceptions with the issue number, and the list only shrinks.
-- **Lint** carries the rest that a tool can check: cognitive complexity 15, `no-await-in-loop`, no
-  `console`, no `process.env` outside `config/` (`n/no-process-env` with an override for `config/`),
-  zero warnings.
+    ignore list. While a large fix is in progress, a violation may be listed in the check's allowed
+    exceptions with the issue number, and the list only shrinks.
+- **Lint** carries the rest that a tool can check: cognitive complexity 15, no awaited query in a
+  loop, no console output, no environment access outside `config/`, zero warnings.
 - **Review** carries the rules no tool checks. A reviewer (person or agent) cites the rule ID.
+
+> **Reference implementation (Node/React).** [dependency-cruiser](https://github.com/sverweij/dependency-cruiser):
+> `npm i -D dependency-cruiser`, then `"check:architecture": "depcruise src --config .dependency-cruiser.cjs"`
+> inside `npm run checks`. Reference configurations in this repository:
+> `config/dependency-cruiser/node-backend.cjs` and `react-frontend.cjs` (+
+> `react-frontend.aliases.cjs` for the bundler's `@/` alias), copied to the project root as
+> `.dependency-cruiser.cjs`. Adapt the folder names at the top and keep the rules; for feature
+> folders, turn each `^src/<layer>/` path into `^src/features/[^/]+/<layer>/` and add the two
+> feature rules. The temporary exceptions go in the config's `allowed` list. Lint: ESLint with
+> `sonarjs/cognitive-complexity`, `no-await-in-loop`, `no-console`, `n/no-process-env` (with an
+> override for `config/`), `--max-warnings 0`.
 
 ## 10. When no rule fits
 
@@ -461,18 +576,18 @@ import { requestStatusBadge } from "@/app/util/requestStatus"; // Good: shared, 
 
 ## 11. Checklist
 
-- [ ] Top-level folders are layers; no `features/` folder; every file name carries its domain.
-- [ ] `npm run check:architecture` runs in `checks` (pre-commit and CI) with no violation.
+- [ ] Top-level folders are layers, or the decision log records feature folders with their reasons and section 2.3 is followed; every file name carries its domain.
+- [ ] The dependency check (`check:architecture`) runs in the fast checks (pre-commit and CI) with no violation.
 - [ ] Routers validate every input with a schema, require a permission, call one service; no database access.
 - [ ] Business rules live in `domain/` or services, once; authorization in permissions and policies.
-- [ ] Multi-document writes in a transaction; concurrent edits guarded by versions.
+- [ ] Multi-record writes in a transaction; concurrent edits guarded by versions.
 - [ ] External services behind adapters with timeouts, bounded retries and typed errors.
 - [ ] No N+1 queries; the main queries are proven to use an index.
 - [ ] Every input validated in the frontend and the backend with the same rules and keys; a refusal is a 422 with `errors` per field in dot notation (section 6).
 - [ ] Every form: field errors under the input and focused, general errors in one shared general area, a toast on every failed submit (6.4).
-- [ ] One error body (`message`, `code`, `requestId`) for every status; statuses used as in 6.2.
-- [ ] Every form reachable without an account has the honeypot (decoy success, not in OpenAPI) and its own rate limit.
-- [ ] Frontend: server calls only in `store/api`; no page-to-page or cross-area imports; primitives fetch nothing.
+- [ ] One error body (`code`, `message`, `requestId`) for every status; statuses used as in 6.2.
+- [ ] Every form reachable without an account has both bot traps (a trap field no autofill matches, a configurable minimum fill time; decoy success; not in the API docs) and its own rate limit.
+- [ ] Frontend: server calls only in the API layer; no page-to-page or cross-area imports; primitives fetch nothing.
 - [ ] Frontend: server data only in the query cache; list state in the URL; one pattern per kind of page.
 - [ ] Only `config/` reads the environment; lint enforces complexity 15 and zero warnings.
 - [ ] Every deviation is a decision in the log, cited where the code deviates.
