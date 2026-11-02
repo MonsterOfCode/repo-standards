@@ -117,7 +117,20 @@ sample values, and for every builder and every language:
 
 Reference: `scripts/node-backend/check-emails.js` + `checks/email-check.js`.
 
-### 4.2 Migration immutability
+### 4.2 Migrations: final state before production, changes only after
+
+- **Before the first production release, one migration per collection, in its final state**: the
+  collection, its validator, every index and the system data the app needs (roles, plans...). There
+  is no migration that only adds an index or converts data: an index or a schema change edits that
+  collection's migration, and every deployed non-production database is reset (or re-runs it, which
+  is why migrations are idempotent). A project that has not reached production never carries a
+  history of changes.
+- **Migrations that change something come only after production**, once the database can no longer
+  be rebuilt: then a change is a new migration, and the released ones are locked (below).
+- A test runs every migration on an empty database and checks the result.
+
+**Immutability once in production:**
+
 
 Migrations are an append-only log **once they run in production**: an environment that already ran
 a migration never runs its new version, so editing it makes environments silently diverge.
@@ -220,7 +233,7 @@ Reference: `config/commitlint.config.js` (self-contained; `npm i -D @commitlint/
 - [ ] Translations: same keys, same variables per key, plural families, no empty values, language rules; frontend: used and unused keys.
 - [ ] `.env.example` parity in both directions; deployment examples name only known variables.
 - [ ] Backend: email templates (files in both formats, or a catalogue built in every language).
-- [ ] Backend: migration lock; the production release refuses an incomplete lock; migration contract.
+- [ ] Backend: before production, one final-state migration per collection (no index-only or conversion migrations); migration lock; the production release refuses an incomplete lock; migration contract.
 - [ ] Backend: route docs route by route in both directions; the OpenAPI document builds with unique operationIds.
 - [ ] Frontend: every class we define has the app prefix and is used; every prefixed class used is defined.
 - [ ] Commit messages follow section 6.
