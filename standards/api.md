@@ -78,7 +78,7 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 Every list endpoint takes the same parameters and answers with the same `meta`.
 
 - **API-L1 — Never unbounded.** Every list is paginated, with a default size and a maximum (e.g.
-  default 25, maximum 100); a larger `limit` is a `422`. An export is its own endpoint, capped and
+  default 10, maximum 100); a larger `limit` is a `422`. An export is its own endpoint, capped and
   audited.
 - **API-L2 — Page pagination by default:** `page` (from 1) and `limit`. The answer's `meta` holds
   `page`, `limit`, `total` and `totalPages`. **Cursor pagination** (`cursor`, `limit`, answer
@@ -100,7 +100,7 @@ Every list endpoint takes the same parameters and answers with the same `meta`.
   "data": [{ "id": "6c1e...", "number": "INV-2026-00042", "status": "open", "totalCents": 36320 }],
   "meta": {
     "page": 2,
-    "limit": 25,
+    "limit": 10,
     "total": 61,
     "totalPages": 3,
     "sort": { "field": "issuedAt", "direction": "desc" },
