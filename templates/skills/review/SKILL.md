@@ -18,6 +18,8 @@ argument-hint: "[commit range or PR number; default: uncommitted changes]"
    - **Tests**: every branch tested with real assertions; nothing excluded to reach 100%.
    - **Security and privacy**: no secret, no personal data in logs, audit events for sensitive reads
      and changes.
+   - **APIs** (api standard) and, for a partner-facing route or a client of an outside API, the
+     partner API standard (credentials, allow-list, signing, minimisation, client rules).
    - **Translations, docs, decisions** updated in the same change.
 4. Verify each finding against the code before reporting it: quote the line, give the scenario that
    goes wrong.

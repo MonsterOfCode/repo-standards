@@ -72,7 +72,9 @@ incident response, `P` periodic review.
   invitation), and never logged (logging standard, section 6).
 - **SEC-A12 — Calling applications are identified.** When several clients call the API (web app,
   mobile, partner), each has an id and a key stored hashed; a request without a known client is
-  refused before authentication.
+  refused before authentication. A partner (an outside organisation calling server to server) also
+  follows the [partner API standard](partner-api.md): scoped keys, rotation with overlap, an IP
+  allow-list and signed requests.
 
 > **Reference implementation (Node/React).** bcrypt (cost 12); JWT access token of 5 minutes in an
 > `HttpOnly` cookie (or a bearer header for non-browser clients); refresh tokens of 7 days, SHA-256

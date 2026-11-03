@@ -7,6 +7,8 @@ Every API of ours answers the same way: the same URL shapes, the same status cod
 envelope, the same list parameters, the same error body. A frontend, a partner or an agent that knows
 one of our APIs knows them all. This standard defines that contract; the error body and the
 validation format are in the [architecture standard](architecture.md), section 6, and are part of it.
+An API called by an outside organisation also follows the [partner API standard](partner-api.md)
+(credentials, allow-lists, signing, minimisation).
 
 The rules are stack-agnostic. Concrete code is in the **Reference implementation (Node/React)**
 callouts.

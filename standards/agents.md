@@ -42,7 +42,7 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 | `STATUS.md`                  | the current state: where things stand, recently done, in flight, open questions, environment notes          | **every agent, after every task**  |
 | `docs/decisions.md`          | the decision log (D1, D2, ...): context, decision, why, consequences                                        | agents and developers, append-only |
 | `docs/` (see section 5)      | architecture, reference specs, runbooks, the project's page/layout standard                                 | with the change that alters them   |
-| `.claude/skills/` (optional) | the project's skills: verify, decision, handoff, review                                                     | the developer                      |
+| `.claude/skills/` (optional) | the project's skills: verify, decision, handoff, review, audit                                              | the developer                      |
 
 - **AG-1 — One guide for every agent.** `AGENTS.md` is read by Codex, Cursor and others;
   `CLAUDE.md` imports it with `@AGENTS.md`. The rules are never maintained twice.
