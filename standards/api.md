@@ -1,7 +1,11 @@
 # HTTP API standard
 
-**Version:** 1.0 (2026-11-02). **For:** every HTTP API of ours, public or used only by our own
+**Version:** 1.1 (2026-11-03). **For:** every HTTP API of ours, public or used only by our own
 frontend. **Audience:** the developer, or the AI agent, designing, building or reviewing an API.
+
+**Changes in 1.1:** rules that are consistency choices are marked _(convention)_ (README,
+"Conventions"); the sort syntax is split from the sort allow-list (new API-L7) and filter validation
+from filter naming (new API-L8), so the convention and the risk control can be audited apart.
 
 Every API of ours answers the same way: the same URL shapes, the same status codes, the same body
 envelope, the same list parameters, the same error body. A frontend, a partner or an agent that knows
@@ -25,20 +29,22 @@ callouts.
 
 The key words **must**, **must not** and **should** mean what they say. Rules have IDs
 `API-<area><n>`: `N` naming, `M` methods and statuses, `B` bodies, `L` lists, `S` field shaping,
-`I` idempotency, `C` concurrency, `R` rate limits, `V` versioning, `T` types, `D` documentation.
+`I` idempotency, `C` concurrency, `R` rate limits, `V` versioning, `T` types, `D` documentation. A
+rule marked _(convention)_ is a consistency choice, not a risk control (README, "Conventions"): a
+new API follows it, an existing one may keep its own documented convention through a decision.
 
 ## 1. Resources and URLs
 
-- **API-N1 — Nouns, plural, kebab-case:** `/orders`, `/orders/{orderId}`, `/billing-prices`. The verb
-  is the HTTP method.
-- **API-N2 — Nesting shows ownership, one level deep:** `/orders/{orderId}/lines`. Deeper relations
-  get their own top-level resource with a filter (`/lines?orderId=...`).
+- **API-N1 — Nouns, plural, kebab-case:** _(convention)_ `/orders`, `/orders/{orderId}`,
+  `/billing-prices`. The verb is the HTTP method.
+- **API-N2 — Nesting shows ownership, one level deep:** _(convention)_ `/orders/{orderId}/lines`.
+  Deeper relations get their own top-level resource with a filter (`/lines?orderId=...`).
 - **API-N3 — Actions that are not CRUD are sub-resources named by the verb**, always `POST`:
   `POST /invoices/{id}/cancel`, `POST /orders/{id}/schedule`. Not `PATCH { status: "cancelled" }` when
   the transition has rules, side effects or its own permission.
-- **API-N4 — `me` for the caller:** `/users/me`, `/users/me/sessions`.
-- **API-N5 — JSON field names in camelCase**, enum values in `snake_case`, the same words as the
-  product (ARCH-N2).
+- **API-N4 — `me` for the caller:** _(convention)_ `/users/me`, `/users/me/sessions`.
+- **API-N5 — JSON field names in camelCase** _(convention)_, enum values in `snake_case`, the same
+  words as the product (ARCH-N2).
 - Admin or cross-tenant variants live under their own prefix (`/admin/orders`) with their own
   permissions, rather than a flag on the public route.
 
@@ -54,16 +60,16 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 
 - **API-M1 — Errors use the statuses of architecture 6.2:** `400` malformed, `401` not signed in,
   `403` not allowed, `404` not found **or not visible**, `409` conflict with the current state, `422`
-  validation, `429` rate limit, `503` dependency down; `500` only for the unexpected. Each with the
-  error body and a stable `code`.
+  validation (the choice of `422` is ARCH-V16, a convention), `429` rate limit, `503` dependency
+  down; `500` only for the unexpected. Each with the error body and a stable `code`.
 - **API-M2 — `GET`, `PUT` and `DELETE` are idempotent**; a repeated `DELETE` of something already gone
   is `204` or `404`, decided once for the API and documented.
 - **API-M3 — No state change on `GET`**, not even "mark as read": that is a `POST`.
 
 ## 3. Bodies
 
-- **API-B1 — Success bodies are wrapped in `data`:** `{ "data": { ...resource } }` for one,
-  `{ "data": [ ... ], "meta": { ... } }` for a list. Errors are wrapped in `error`
+- **API-B1 — Success bodies are wrapped in `data`:** _(convention)_ `{ "data": { ...resource } }`
+  for one, `{ "data": [ ... ], "meta": { ... } }` for a list. Errors are wrapped in `error`
   (architecture 6.2). A body is never a bare array.
 - **API-B2 — A resource has the same shape everywhere** it appears (a list item may be a documented
   subset). Related records are referenced by id, or embedded as a small, documented summary
@@ -82,24 +88,34 @@ Every list endpoint takes the same parameters and answers with the same `meta`.
 - **API-L1 — Never unbounded.** Every list is paginated, with a default size and a maximum (e.g.
   default 10, maximum 100); a larger `limit` is a `422`. An export is its own endpoint, capped and
   audited.
-- **API-L2 — Page pagination by default:** `page` (from 1) and `limit`. The answer's `meta` holds
-  `page`, `limit`, `total` and `totalPages`. **Cursor pagination** (`cursor`, `limit`, answer
-  `meta.nextCursor`, no total) for feeds, very large or fast-changing collections.
-- **API-L3 — Filters are query parameters named after the field:** `?status=open`. A multi-value
-  filter repeats the parameter (`?status=open&status=paid`) and means "any of". Ranges use suffixes
-  (`createdFrom`, `createdTo`). Every filter is validated; an unknown filter is a `422`.
-- **API-L4 — Sorting:** `sort=field` ascending, `sort=-field` descending, from an **allow-list** per
-  endpoint (fields with an index); anything else is a `400`/`422` with its code. A default sort is
-  always applied, with a unique tie-breaker (the id) so pages are stable.
+- **API-L2 — Page pagination by default:** _(convention)_ `page` (from 1) and `limit`. The answer's
+  `meta` holds `page`, `limit`, `total` and `totalPages`. **Cursor pagination** (`cursor`, `limit`,
+  answer `meta.nextCursor`, no total) for feeds, very large or fast-changing collections.
+- **API-L3 — Filters are query parameters named after the field:** _(convention)_ `?status=open`. A
+  multi-value filter repeats the parameter (`?status=open&status=paid`) and means "any of". Ranges
+  use suffixes (`createdFrom`, `createdTo`).
+- **API-L8 — Every filter is validated.** Each filter parameter is parsed by the endpoint's schema
+  (type, allowed values, length); an unknown filter is a `422`, never silently ignored.
+- **API-L4 — Sorting from an allow-list.** A sort is accepted only on the fields of an **allow-list**
+  per endpoint (fields with an index); anything else is a `400`/`422` with its code. A default sort
+  is always applied, with a unique tie-breaker (the id) so pages are stable.
+- **API-L7 — Sort syntax** _(convention)_: `sort=field` ascending, `sort=-field` descending.
 - **API-L5 — Search:** one `search` parameter, trimmed, length-capped (e.g. 120), matching the fields
   the endpoint documents. An endpoint without search refuses `search` instead of ignoring it.
-- **API-L6 — `meta` echoes what was applied** (`sort`, `search`, `filters`) and may describe what the
-  caller can use (`sortableFields`, `filterOptions`), so a generic list page needs no hard-coded
-  knowledge.
+- **API-L6 — `meta` echoes what was applied** _(convention)_ (`sort`, `search`, `filters`) and may
+  describe what the caller can use (`sortableFields`, `filterOptions`), so a generic list page needs
+  no hard-coded knowledge.
 
 ```json
 {
-  "data": [{ "id": "6c1e...", "number": "INV-2026-00042", "status": "open", "totalCents": 36320 }],
+  "data": [
+    {
+      "id": "6c1e...",
+      "number": "INV-2026-00042",
+      "status": "open",
+      "totalCents": 36320
+    }
+  ],
   "meta": {
     "page": 2,
     "limit": 10,
@@ -159,8 +175,8 @@ defaultSort, filterSchema, maxLimit, searchable })` helper validates `page`, `li
 
 ## 9. Versioning and change
 
-- **API-V1 — The major version is in the path:** `/api/v1/...`. A new major version only for a
-  breaking change that cannot be done additively.
+- **API-V1 — The major version is in the path:** _(convention)_ `/api/v1/...`. A new major version
+  only for a breaking change that cannot be done additively.
 - **API-V2 — Within a version, changes are additive only:** new endpoints, new optional request
   fields, new response fields, new enum values **only where the documentation says clients must
   accept unknown values**. Never a removed or renamed field, a changed type or meaning, a new required
@@ -205,7 +221,7 @@ defaultSort, filterSchema, maxLimit, searchable })` helper validates `page`, `li
 - [ ] Plural kebab-case resources, one level of nesting, actions as `POST` sub-resources, camelCase fields, `snake_case` enums.
 - [ ] Methods and statuses as in section 2; errors in the architecture 6.2 body with stable codes; `404` for what the caller can't see.
 - [ ] Success bodies wrapped in `data` (and `meta` for lists); resources carry `allowedActions`.
-- [ ] Every list paginated with a maximum; `page`/`limit` with `total`/`totalPages` (or a cursor); multi-value filters; `sort=-field` from an allow-list with a stable tie-breaker; one `search`; unknown parameters refused.
+- [ ] Every list paginated with a maximum; `page`/`limit` with `total`/`totalPages` (or a cursor); multi-value filters, each validated; `sort=-field` from an allow-list with a stable tie-breaker; one `search`; unknown parameters refused.
 - [ ] Fields shaped by the caller's permissions, absent when not allowed; one serializer per resource.
 - [ ] `Idempotency-Key` on retryable creating or paying `POST`s; state transitions idempotent by design.
 - [ ] Versions or ETags on concurrently edited records; `409` on a stale write.

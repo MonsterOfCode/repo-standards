@@ -20,3 +20,24 @@ decision that says which one it supersedes. Code enforcing a non-obvious rule ci
 **Consequences / tests.** <What changes elsewhere, and which tests lock it in.>
 
 ---
+
+<!-- Template for an exception to an engineering standard (README, "Exceptions and adaptations").
+One entry may cover several rules. An audit finds it by the rule IDs. Delete this comment. -->
+
+## D2 — Exception: <rule IDs, e.g. API-B1 API-L2> <short description>
+
+**Status:** 🟢 Decided by <who> (<YYYY-MM-DD>).
+
+**Rules:** <one or more rule IDs, e.g. API-B1, API-L2>
+
+**Verdict:** <exception (not applied) | adapted (applied differently) | convention kept (the project keeps its own convention)>
+
+**Reason:** <Why the rule is not applied as written.>
+
+**Compensating control:** <What replaces the risk control, or "none needed - convention".>
+
+**Review date:** <YYYY-MM-DD, when this is looked at again; "none" is allowed for a convention kept.>
+
+**Owner:** <Who decided and answers for it.>
+
+---

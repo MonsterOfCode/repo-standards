@@ -1,8 +1,12 @@
 # Security standard
 
-**Version:** 1.0 (2026-11-02). **For:** every project of ours, backend and frontend, and the
+**Version:** 1.1 (2026-11-03). **For:** every project of ours, backend and frontend, and the
 servers they run on. **Audience:** the developer, or the AI agent, building or reviewing a
 project's security.
+
+**Changes in 1.1:** new section 13, PWA and mobile clients (SEC-M1 to SEC-M7); the restore drill
+(SEC-B3) checks that erased people stay erased (privacy standard, PRIV-39); the checklist moves to
+section 14.
 
 Every application of ours handles accounts, and most handle personal data. This standard sets the
 security baseline they all meet: how people sign in, how access is decided, how input and output
@@ -22,12 +26,12 @@ The rules are stack-agnostic. Concrete libraries are in the **Reference implemen
    header present, a cookie flag set, a lockout reached).
 3. Never weaken a control to make a test or a feature pass. A control a project cannot meet is a
    decision in its log, with the compensating measure.
-4. Finish with the checklist in section 13. Report every gap you found, fixed or not.
+4. Finish with the checklist in section 14. Report every gap you found, fixed or not.
 
 The key words **must**, **must not** and **should** mean what they say. Rules have IDs `SEC-<area><n>`:
 `A` authentication, `Z` authorization, `I` input and output, `S` secrets, `T` transport and headers,
 `R` rate limiting and abuse, `D` dependencies, `L` security logging, `E` errors, `B` backups, `X`
-incident response, `P` periodic review.
+incident response, `P` periodic review, `M` PWA and mobile clients.
 
 ## 1. Authentication and sessions
 
@@ -230,6 +234,8 @@ strict-origin-when-cross-origin` (or stricter), a `Permissions-Policy` that turn
   backup. The bucket uses versioning or object lock so a stolen key can't erase history.
 - **SEC-B3 — Restore drills.** A backup is restored into a throwaway instance and compared with its
   manifest: before go-live, then monthly. The date and result go in the ops log (CI/CD standard).
+  The drill includes the erasure check: after the restore, the erasure ledger is re-applied and a
+  person erased after the backup's date stays erased ([privacy standard](privacy.md), PRIV-39).
 - **SEC-B4 — Monitored.** A failed or missing backup alerts (dead-man's switch, service-health
   standard, section 11).
 
@@ -257,7 +263,43 @@ strict-origin-when-cross-origin` (or stricter), a `Permissions-Policy` that turn
   secrets and partner accounts; leavers removed the day they leave.
 - **SEC-P4 — This checklist** is re-run at each review and its result recorded.
 
-## 13. Checklist
+## 13. PWA and mobile clients
+
+A web app installed as a PWA, or a mobile app, keeps data and credentials on a device the service
+does not control, often shared or lost. These rules apply as soon as a project has a service worker,
+push notifications or a mobile client.
+
+- **SEC-M1 — Service worker scope.** The service worker is served from the app's own origin, its
+  scope limited to the app's path, under the same Content Security Policy as the app (SEC-T3). It
+  never intercepts requests to other origins.
+- **SEC-M2 — No personal data in the offline cache.** The service worker caches static assets only
+  (scripts, styles, fonts, icons), never API responses that contain personal data. If offline access
+  to personal data is a requirement, it is a recorded decision: the cached data is encrypted with a
+  key that does not outlive the session, and cleared on logout (SEC-M3).
+- **SEC-M3 — Logout leaves nothing behind.** Logout (and a session revoked by the server) clears the
+  service-worker caches, local and session storage, IndexedDB, and unregisters the device's push
+  subscription on the server.
+- **SEC-M4 — Push payloads carry no personal data.** A notification carries an id and a type only
+  ("You have a new message"); the app fetches the content after the person has opened and unlocked
+  it, through the normal authenticated API. The lock screen shows nothing sensitive.
+- **SEC-M5 — Shared and lost devices.** No credential or token in local storage (SEC-A9: cookies, or
+  the platform keystore on mobile). An app handling sensitive data offers an app lock or asks to
+  re-authenticate after a period of inactivity, and on mobile hides its screen from the app-switcher
+  snapshot. The server can revoke a device's session (SEC-A8).
+- **SEC-M6 — Deep links are input.** A deep link or universal link (and any route parameter it
+  carries) is validated like any other input (SEC-I1), never performs an action without the normal
+  confirmation and permission check, and redirects only to allow-listed destinations.
+- **SEC-M7 — Mobile credentials.** Tokens are stored in the platform keystore (Keychain, Android
+  Keystore), never in plain preferences or files. Certificate pinning is optional, by recorded
+  decision with its pin-rotation plan (a pin that cannot be rotated locks users out).
+
+> **Reference implementation (Node/React).** A Workbox service worker with a precache of the build's
+> static assets only and `NetworkOnly` for `/api/`; logout calls `caches.keys()` +
+> `caches.delete()`, clears `localStorage`, `sessionStorage` and the IndexedDB databases, and
+> `pushSubscription.unsubscribe()` plus a `DELETE` of the subscription on the server; push payloads
+> `{ type, id }` only.
+
+## 14. Checklist
 
 - [ ] Password policy (≥ 12 characters, same rule front and back), adaptive hash, no forced rotation; breached-password check adopted or a decision.
 - [ ] Second factor for privileged accounts; one-time codes short-lived, single use, hashed, limited attempts.
@@ -272,6 +314,9 @@ strict-origin-when-cross-origin` (or stricter), a `Permissions-Policy` that turn
 - [ ] Lockfiles, audit gate, automated updates, pinned and scanned images, pinned CI actions.
 - [ ] Security events in the audit log, anomaly alerts, scrubbed logs and error reports.
 - [ ] Error bodies leak nothing; unexpected errors are generic `500`s, tracked.
-- [ ] Encrypted off-server backups, retention, restore drill before go-live and monthly, backup failures alert.
+- [ ] Encrypted off-server backups, retention, restore drill before go-live and monthly (including the erasure re-apply check), backup failures alert.
 - [ ] Incident response written down, including secret rotation and breach notification duties.
 - [ ] ASVS level 2 review and a penetration test before go-live; quarterly access review.
+- [ ] PWA/mobile: service worker scoped to the app under the same CSP; no API responses with personal data cached (or encrypted and cleared, by decision); logout clears caches, storage, IndexedDB and the push subscription.
+- [ ] PWA/mobile: push payloads carry only an id and a type; no tokens in local storage; app lock or re-authentication for sensitive apps; no sensitive app-switcher snapshot.
+- [ ] PWA/mobile: deep links validated like input; mobile tokens in the platform keystore; certificate pinning only by decision with a rotation plan.

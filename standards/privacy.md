@@ -1,8 +1,13 @@
 # Privacy and data protection standard
 
-**Version:** 1.0 (2026-11-02). **For:** every project of ours that stores data about people.
+**Version:** 1.1 (2026-11-03). **For:** every project of ours that stores data about people.
 **Audience:** the developer, or the AI agent, designing or reviewing how a project collects, keeps,
 shows and deletes personal data.
+
+**Changes in 1.1:** erasure and backups (PRIV-39 to PRIV-41): an erasure ledger kept outside the
+backups and re-applied after every restore, crypto-shredding with a separately backed-up key vault,
+bounded backup retention, and a restore drill that proves an erased person stays erased. PRIV-10
+now points to them.
 
 Most of our applications store data about people, and some store especially sensitive data (health,
 finances, identity documents). This standard turns data-protection law into engineering rules that
@@ -79,7 +84,22 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
   recording its run) enforces every retention. A retention written only in a document is not
   enforced.
 - **PRIV-10 — Backups follow:** expired data disappears from backups when they rotate (e.g. within
-  weeks); a restore re-applies erasures done after the backup's date (keep the list of erased ids).
+  weeks); a restore re-applies erasures done after the backup's date (PRIV-39 to PRIV-41).
+- **PRIV-39 — A restore never brings erased data back.** Backups are not rewritten when someone is
+  erased. Instead, an **erasure ledger** is kept **outside the backups** (its own store, with its own
+  backup): the ids of the erased people and records (and, with crypto-shredding, the ids of the
+  destroyed keys), with the erasure date, and no personal data beyond those opaque ids. After every
+  restore, the ledger is re-applied automatically (the same erasure function as PRIV-16) **before the
+  restored system serves any traffic** or runs any job that sends data out; the restore fails if the
+  re-apply fails. The restore drill (security standard, SEC-B3) checks that a person erased after the
+  backup's date is still erased once the restore is done.
+- **PRIV-40 — Crypto-shredding, when used.** When personal data is encrypted with a key per person
+  (or per record), erasure destroys that key and records its id in the ledger. The key vault is backed
+  up **separately** from the data, with its own retention, and a restore of the vault re-applies the
+  destroyed key ids from the ledger, so a restored key never decrypts erased data again.
+- **PRIV-41 — Backup retention is bounded.** The longest backup retention (SEC-B2) is stated in the
+  register and the privacy notice: erased data has left every backup within that period (e.g. "within
+  90 days of the erasure"). No backup is kept beyond it, except under a recorded legal hold.
 
 ## 5. The rights of the person
 
@@ -198,6 +218,9 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
 - [ ] Every personal field classified; a data register with purpose, legal basis, retention, access and recipients per collection; changed with the code.
 - [ ] Forms collect only what their purpose needs; no reuse for a new purpose without a new legal basis.
 - [ ] A retention per data type, enforced by TTL or jobs; backups rotate and restores re-apply erasures.
+- [ ] An erasure ledger (opaque ids and destroyed key ids only) kept outside the backups and re-applied automatically after every restore, before the system serves traffic; the restore fails if it fails.
+- [ ] With crypto-shredding: per-person keys, the key vault backed up separately, destroyed key ids re-applied after a vault restore.
+- [ ] Backup retention bounded and stated in the register and privacy notice; the restore drill proves an erased person stays erased.
 - [ ] Self-service export; access history for sensitive records; rectification; erasure with anonymisation where records must stay, through one shared function, proven by a test.
 - [ ] Consent and terms acceptance recorded with versions; non-essential cookies only after opt-in.
 - [ ] Sensitive records visible on need to know, every read logged, lists minimal.

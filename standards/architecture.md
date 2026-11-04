@@ -1,7 +1,13 @@
 # Architecture standard
 
-**Version:** 1.1 (2026-11-02). **For:** every project of ours, backend and frontend. **Audience:**
+**Version:** 1.2 (2026-11-03). **For:** every project of ours, backend and frontend. **Audience:**
 the developer, or the AI agent, building or reviewing code in a project.
+
+**Changes in 1.2:** rules that are consistency choices are marked _(convention)_ (README,
+"Conventions"); the 422 status, the error body and the rule-key naming get their own IDs (ARCH-V16,
+ARCH-V17, ARCH-V18); background jobs (ARCH-B17) point to the service-health standard; new
+accessibility section (ARCH-A1 to ARCH-A9), which ARCH-F14 now refers to; exceptions follow the
+README format (section 10).
 
 **Changes in 1.1:** layer-first folders are the recommended default, no longer mandatory (ARCH-1,
 section 2); stack-specific details moved to "Reference implementation (Node/React)" callouts; the
@@ -31,14 +37,16 @@ stack keeps the rule and picks its own equivalent.
 
 The key words **must**, **must not** and **should** mean what they say. Rules have IDs: `ARCH-n`
 (principles), `ARCH-Bn` (backend), `ARCH-Fn` (frontend), `ARCH-Vn` (validation and errors),
-`ARCH-Nn` (naming), `ARCH-Cn` (code).
+`ARCH-Nn` (naming), `ARCH-Cn` (code), `ARCH-An` (accessibility). A rule marked _(convention)_ is a
+consistency choice, not a risk control (README, "Conventions"): a new project follows it, an
+existing one may keep its own documented convention through a decision.
 
 ## 1. Principles
 
-- **ARCH-1 — Layer first by default; feature folders only by recorded decision.** By default,
-  top-level folders are layers (the technical role of a file), and the file name carries the
-  feature. A project may organise by feature instead, if it records that decision and its reasons in
-  its decision log and keeps the dependency rules (section 2).
+- **ARCH-1 — Layer first by default; feature folders only by recorded decision.** _(convention)_ By
+  default, top-level folders are layers (the technical role of a file), and the file name carries
+  the feature. A project may organise by feature instead, if it records that decision and its
+  reasons in its decision log and keeps the dependency rules (section 2).
 - **ARCH-2 — Dependencies point one way.** A layer imports only the layers below it (sections 3 and
   4), whatever the folder layout. No import cycles.
 - **ARCH-3 — The backend is the authority.** Permissions, visibility, validation and business math
@@ -175,6 +183,11 @@ Rules checked by review:
 - **ARCH-B16 — Typed errors, stable codes.** Errors are classes mapped to an HTTP status, with a
   stable `snake_case` code the frontend translates, in the body of section 6.2. A new situation gets
   a new code; a shipped code never changes meaning.
+- **ARCH-B17 — Background jobs are thin, and follow service health.** A job is to a schedule what a
+  router is to a request: it calls services, holds no business rule (ARCH-B9) and is imported only by
+  a composition root (ARCH-B1). Run records, locks, success markers and isolation between jobs follow
+  the background-job rules of the [service-health standard](service-health.md) (SH-B1-SH-B6); they
+  are not repeated here.
 
 > **Reference implementation (Node/React).** Express routers in `src/routers/`, named
 > `<domain>-router.js`; schemas with Zod (`Schema.parse(req.body)` in the router); MongoDB
@@ -229,26 +242,63 @@ Rules checked by review:
 - **ARCH-F13 — Styling in CSS, not in code constants.** Shared visual states are named CSS utilities
   with the app's prefix (commit-checks standard, section 5.1). Light and dark themes and phone width
   are part of every UI change.
-- **ARCH-F14 — Accessible by default.** WCAG 2.2 AA: every control has a label, every dialog traps
-  and returns focus, nothing is reachable only by mouse, contrast passes in both themes.
+- **ARCH-F14 — Accessible by default.** Every UI change meets the accessibility rules below
+  (ARCH-A1 to ARCH-A9).
 
 > **Reference implementation (Node/React).** React with Vite; pages are `XPage.jsx` with their pure
 > helpers in `xUi.js`; the API layer is Redux Toolkit Query, one `store/api/<domain>Api.js` slice per
 > domain, invalidated by cache tags (ARCH-F8); no `fetch`/axios outside `util/` and `store/api`;
 > Tailwind CSS utilities declared with `@utility` under the app prefix.
 
+### Accessibility
+
+- **ARCH-A1 — WCAG 2.2 level AA is the target** for every screen, public or behind a login. A
+  criterion the product cannot meet is a decision, with the alternative offered.
+- **ARCH-A2 — Contrast in both themes.** Text at least 4.5:1 (3:1 for large text), icons, input
+  borders and focus indicators at least 3:1 against what is next to them, checked in the light and
+  the dark theme. Colour is never the only way to tell something (an error, a status).
+- **ARCH-A3 — Everything works with a keyboard.** Every action reachable with the mouse is reachable
+  with the keyboard, in a logical order that follows the reading order, with a visible focus
+  indicator. Nothing traps the keyboard except an open dialog (ARCH-A4).
+- **ARCH-A4 — Focus is managed.** Opening a dialog moves focus into it and keeps it there; closing it
+  returns focus to the control that opened it. A route change moves focus to the new page's heading
+  (or main region), so a screen-reader user knows the page changed.
+- **ARCH-A5 — Labels and announced errors.** Every input has a label tied to it (a visible label, not
+  only a placeholder); every icon-only button has an accessible name. An invalid field carries
+  `aria-invalid` and `aria-describedby` pointing to its message (ARCH-V11); the form's general error
+  and the toasts are in a live region, so the error is announced, not only shown (ARCH-V12, ARCH-V13).
+- **ARCH-A6 — Reduced motion respected.** Animations and transitions beyond a simple fade are turned
+  off or reduced when the user's system asks for it (`prefers-reduced-motion`); nothing flashes more
+  than three times a second.
+- **ARCH-A7 — Touch targets** are at least 24 by 24 CSS pixels (44 by 44 recommended), or spaced so
+  that a 24-pixel circle around each one touches no other.
+- **ARCH-A8 — The page's language follows the UI language.** The document's `lang` attribute changes
+  with the language the user picked (screen readers and hyphenation depend on it); a passage in
+  another language carries its own `lang`.
+- **ARCH-A9 — Checked by tools and by a person.** Accessibility lint rules run in the fast checks
+  (zero warnings); an automated accessibility scan runs in the end-to-end tests on every main page,
+  in both themes, and fails on a serious or critical violation; before each release with UI changes,
+  a person goes through the changed screens with the keyboard only and with a screen reader.
+
+> **Reference implementation (Node/React).** `eslint-plugin-jsx-a11y` (recommended rules) in the
+> lint step; `@axe-core/playwright` in the Playwright end-to-end tests, run per main page in light
+> and dark theme, failing on `serious` and `critical` impacts; Radix/shadcn primitives for dialogs and
+> menus (focus trapping and return built in); `document.documentElement.lang` set from the i18n
+> language; Tailwind's `motion-reduce:` variant; VoiceOver (macOS/iOS) or NVDA (Windows) for the
+> manual pass.
+
 ## 5. Naming
 
-- **ARCH-N1 — The file name carries the domain and the role**, in the casing convention of the
-  language. Backend: `<domain>-router`, `<domain>-service`, `<domain>-policy`, `<domain>-adapter`
-  (`billing-provider-adapter`), `<domain>-job`, `<entity>` for a model. Frontend: `<Domain>Page`,
-  `<domain>Ui`, `<domain>Api`, `use<Thing>`, `<Thing>` for a component.
-- **ARCH-N2 — The product's words.** Names use the product's vocabulary, the same word in the
-  database, the API, the code and the UI. No synonyms (`client` here, `customer` there) and no
-  generic names (`data`, `info`, `manager`, `helper`, `utils2`).
-- **ARCH-N3 — Names say the scope.** A constant or setting says which layer and what it governs
-  (`HTTP_LEDGER_BODY_FIELDS_WITH_VALUES`, not `FIELDS`). A boolean reads as a question (`isActive`,
-  `hasPaidInvoice`). A function is a verb (`issueInvoice`, `listOpenOrders`).
+- **ARCH-N1 — The file name carries the domain and the role** _(convention)_, in the casing
+  convention of the language. Backend: `<domain>-router`, `<domain>-service`, `<domain>-policy`,
+  `<domain>-adapter` (`billing-provider-adapter`), `<domain>-job`, `<entity>` for a model. Frontend:
+  `<Domain>Page`, `<domain>Ui`, `<domain>Api`, `use<Thing>`, `<Thing>` for a component.
+- **ARCH-N2 — The product's words.** _(convention)_ Names use the product's vocabulary, the same
+  word in the database, the API, the code and the UI. No synonyms (`client` here, `customer` there)
+  and no generic names (`data`, `info`, `manager`, `helper`, `utils2`).
+- **ARCH-N3 — Names say the scope.** _(convention)_ A constant or setting says which layer and what
+  it governs (`HTTP_LEDGER_BODY_FIELDS_WITH_VALUES`, not `FIELDS`). A boolean reads as a question
+  (`isActive`, `hasPaidInvoice`). A function is a verb (`issueInvoice`, `listOpenOrders`).
 - **ARCH-N4 — Units in the name or the type.** Money in integer minor units (`unitPriceCents`) or a
   decimal type, durations with their unit (`timeoutMs`, `retentionDays`), instants stored in UTC and
   shown in the user's time zone.
@@ -265,8 +315,9 @@ Rules checked by review:
   The frontend validates for the user (immediate feedback under the field, no round trip); the
   backend validates because it is the authority (ARCH-3) and a request can come from anywhere. A
   rule only in the frontend is not a rule.
-- **ARCH-V2 — Same rule, same key.** The frontend's check and the backend's refusal for the same
-  rule produce the same key (6.3), so the user reads the same message whichever side caught it.
+- **ARCH-V2 — Same rule, same key.** _(convention)_ The frontend's check and the backend's refusal
+  for the same rule produce the same key (6.3), so the user reads the same message whichever side
+  caught it.
 - **ARCH-V3 — The backend refuses what it does not know.** Unknown fields are rejected or stripped,
   never stored. Strings are trimmed; an empty string means "not entered".
 - **ARCH-V4 — Rules that need data are checked by the backend only** (unique email, existing
@@ -274,8 +325,8 @@ Rules checked by review:
 
 ### 6.2 The error body
 
-Every error, whatever its status, has the same body, wrapped in `error` so an error can never be
-mistaken for data:
+- **ARCH-V17 — One error body** _(convention)_. Every error, whatever its status, has the same body,
+  wrapped in `error` so an error can never be mistaken for data:
 
 ```json
 {
@@ -297,7 +348,8 @@ mistaken for data:
 speaks several languages; the frontend owns every text, in every language, and turns a key and its
 parameters into the sentence the user reads.
 
-**A validation failure is always `422`**, with code `validation_failed` and an `errors` object:
+- **ARCH-V16 — A validation failure is always `422`** _(convention)_, with code `validation_failed`
+  and an `errors` object (never `400`, which is kept for a malformed request):
 
 ```json
 {
@@ -309,19 +361,21 @@ parameters into the sentence the user reads.
       "email": [{ "key": "validation.email" }],
       "password": [{ "key": "validation.min.string", "params": { "min": 12 } }],
       "address.postalCode": [{ "key": "validation.required" }],
-      "lines.0.quantity": [{ "key": "validation.min.numeric", "params": { "min": 1 } }],
+      "lines.0.quantity": [
+        { "key": "validation.min.numeric", "params": { "min": 1 } }
+      ],
       "_general": [{ "key": "validation.end_before_start" }]
     }
   }
 }
 ```
 
-- **ARCH-V5 — One entry per field, in dot notation**: the path of the field in the request body,
-  array items by index (`lines.0.quantity`). The frontend maps the path to its input.
-- **ARCH-V6 — A list per field**, because a field can break several rules; the frontend shows the
-  first.
-- **ARCH-V7 — Each item is a translation key with its parameters**, never a sentence. A rule about
-  the request as a whole (not one field) goes under `_general`.
+- **ARCH-V5 — One entry per field, in dot notation** _(convention)_: the path of the field in the
+  request body, array items by index (`lines.0.quantity`). The frontend maps the path to its input.
+- **ARCH-V6 — A list per field** _(convention)_, because a field can break several rules; the
+  frontend shows the first.
+- **ARCH-V7 — Each item is a translation key with its parameters** _(convention)_, never a sentence.
+  A rule about the request as a whole (not one field) goes under `_general`.
 - Other statuses: `400` malformed request (bad JSON, wrong content type), `401` not signed in, `403`
   not allowed, `404` not found or not visible, `409` conflict with the current state (stale
   version, already done, a business rule refusing the action), `429` rate limit, `503` a dependency
@@ -330,9 +384,10 @@ parameters into the sentence the user reads.
 
 ### 6.3 Rule keys
 
-The rule keys are the validation rules' names, `validation.<rule>`, in `snake_case`. A rule whose
-meaning depends on the type of the value has the type as a suffix: `.string` (characters),
-`.numeric` (value), `.array` (items), `.file` (kilobytes).
+- **ARCH-V18 — Rule keys are named after the rule** _(convention)_: `validation.<rule>`, in
+  `snake_case`, from the table below. A rule whose meaning depends on the type of the value has the
+  type as a suffix: `.string` (characters), `.numeric` (value), `.array` (items), `.file`
+  (kilobytes).
 
 | Rule key                                                                                                                     | Parameters            | When                                                      |
 | ---------------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------- |
@@ -357,7 +412,7 @@ meaning depends on the type of the value has the type as a suffix: `.string` (ch
 - **The backend keeps a catalogue** of every key it can send (one file), and a test fails when the
   code sends a key that is not in it; the frontend's translation check requires a translation of
   every catalogued key in every language (ARCH-V15).
-- **ARCH-V8 — A domain rule gets its own key** in the same namespace and style
+- **ARCH-V8 — A domain rule gets its own key** _(convention)_ in the same namespace and style
   (`validation.unknown_postal_code`, `validation.end_before_start`), listed in the project's
   translations. Every key the backend can send exists in every frontend language (a check).
 - The messages live in the frontend's translations, one per key, with the parameters as variables
@@ -383,9 +438,10 @@ Every form behaves the same way, whether the client check or the API found the p
 - **ARCH-V13 — Always a notification.** Every failed submit also shows a toast saying the form has
   errors and where to look ("Check the highlighted fields", or the general message), so a person
   who scrolled away still knows the save did not happen.
-- **ARCH-V14 — Client checks use the backend's keys.** A required field, an email, a length, a
-  range: the client produces `validation.required`, `validation.email`, `validation.max.string` with
-  the same parameters the backend would, so both read the same in every language.
+- **ARCH-V14 — Client checks use the backend's keys.** _(convention)_ A required field, an email, a
+  length, a range: the client produces `validation.required`, `validation.email`,
+  `validation.max.string` with the same parameters the backend would, so both read the same in every
+  language.
 - **ARCH-V15 — No key is ever shown raw.** A key the frontend does not know falls back to a generic
   "Check this field" (or "Something went wrong" for a general error), and the check that compares
   the backend's keys with the frontend's translations prevents it.
@@ -446,8 +502,8 @@ Every form behaves the same way, whether the client check or the API found the p
   feature flags that are always on are removed in the same change that makes them unused.
 - **ARCH-C5 — Logging and audit.** Through the shared logger only (logging standard), audit events
   through the audit service (audit-log standard). Never a raw print to the console.
-- **ARCH-C6 — Imports through an alias.** Absolute imports from the source root, never long relative
-  chains (`../../../`).
+- **ARCH-C6 — Imports through an alias.** _(convention)_ Absolute imports from the source root,
+  never long relative chains (`../../../`).
 - **ARCH-C7 — Idempotent jobs and migrations.** A job or migration run twice gives the same result.
   A job takes a distributed lock and records its run (service-health standard).
 - **ARCH-C8 — Personal data is minimized.** Store only what the product needs, log none of it, and
@@ -570,8 +626,9 @@ import { orderStatusBadge } from "@/app/util/orderStatus"; // Good: shared, name
 
 - Choose the cleanest solution that keeps the principles of section 1, and record it in the
   project's decision log (agents standard, section 4): context, decision, why, consequences.
-- A project that cannot follow a rule of this standard records the exception and the reason in its
-  decision log, and the code that deviates cites the decision.
+- A project that cannot follow a rule of this standard, or keeps its own convention instead of one
+  marked _(convention)_, records it in its decision log in the exception format of the README
+  ("Exceptions and adaptations"), and the code that deviates cites the decision.
 - A rule that turns out to be wrong for every project is changed here, by a pull request.
 
 ## 11. Checklist
@@ -589,5 +646,9 @@ import { orderStatusBadge } from "@/app/util/orderStatus"; // Good: shared, name
 - [ ] Every form reachable without an account has both bot traps (a trap field no autofill matches, a configurable minimum fill time; decoy success; not in the API docs) and its own rate limit.
 - [ ] Frontend: server calls only in the API layer; no page-to-page or cross-area imports; primitives fetch nothing.
 - [ ] Frontend: server data only in the query cache; list state in the URL; one pattern per kind of page.
+- [ ] Background jobs are thin (call services, no business rule) and follow the service-health standard's background-job rules.
+- [ ] Accessibility: WCAG 2.2 AA; contrast in both themes; everything usable by keyboard with a visible focus and logical order; focus moved into dialogs and back.
+- [ ] Accessibility: every input labelled, errors announced (`aria-invalid`, `aria-describedby`, live region); reduced motion respected; touch targets at least 24×24 px; `lang` follows the UI language.
+- [ ] Accessibility lint rules in the fast checks, an automated accessibility scan in the end-to-end tests, a manual keyboard and screen-reader pass before release.
 - [ ] Only `config/` reads the environment; lint enforces complexity 15 and zero warnings.
-- [ ] Every deviation is a decision in the log, cited where the code deviates.
+- [ ] Every deviation, and every convention kept instead of a _(convention)_ rule, is a decision in the exception format of the README, cited where the code deviates.
