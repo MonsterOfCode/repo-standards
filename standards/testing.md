@@ -1,7 +1,11 @@
 # Testing standard (100% coverage gate)
 
-**Version:** 1.2 (2026-11-03). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
+**Version:** 1.3 (2026-11-04). **For:** every project of ours, backend and frontend. **Audience:** the developer, or the AI agent,
 setting up or reviewing a project's tests and pipeline.
+
+**Changes in 1.3:** end-to-end suites run once, in the release pipeline before a deploy (TEST-G7),
+not on every push nor in git hooks; while working, only the end-to-end specs of the changed flow run
+locally (TEST-G9).
 
 **Changes in 1.2:** every rule has a stable ID (`TEST-<area><n>`) and every checklist item cites
 the rules it covers; no rule's meaning changed.
@@ -75,13 +79,21 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
   **depends on it**: a red gate means nothing ships.
 - **TEST-G6 — Green before merge or release.** Branch protection (or the release workflow) requires
   the job to be green before merging or releasing.
-- **TEST-G7 — Slow suites before a deploy.** Slow suites, such as full end-to-end, may run in the
-  release pipeline instead of on every push, but must pass before a deploy.
+- **TEST-G7 — End-to-end once, before a deploy.** The end-to-end suites (mocked API and real
+  backend) run in the release pipeline, once, right before the first deploy of a commit (staging),
+  and a failure blocks it. They do not run on every push. Later promotions of the same commit
+  (production, a demo) only run a smoke test against the deployed environment.
 
 **Locally:**
 
 - **TEST-G8 — A git hook runs the same command** (commit-checks standard: the fast checks before each
   commit, the full gate before each push). Never bypass it (`--no-verify`); fix the failure.
+- **TEST-G9 — End-to-end locally: only the changed flow.** Hooks never run end-to-end. While working,
+  the developer (or agent) runs only the end-to-end specs of the flow they changed (a file or two,
+  plus a `--repeat-each` loop for a race or a flaky fix), never the whole suite on every change. The
+  whole suite runs locally only before merging into the main branch, and only when a change crosses
+  flows (shared layout, auth, permissions, data shared by many pages); otherwise the release pipeline
+  (TEST-G7) is where it runs.
 
 ## 3. What may be excluded
 
@@ -123,7 +135,7 @@ The key words **must**, **must not** and **should** mean what they say. Rules ha
   | concurrency                                         | real transactions on a real engine: two requests racing for the same thing, exactly one wins                                                                                |
   | external partners                                   | the client with the HTTP layer mocked, or a local stub server; every error the partner can return                                                                           |
   | frontend components and pages                       | component tests: what the user sees and does, not implementation details                                                                                                    |
-  | whole flows                                         | end-to-end in a real browser: with a mocked API on every push, and against the real backend before a release                                                                |
+  | whole flows                                         | end-to-end in a real browser: with a mocked API and against the real backend, in the release pipeline (TEST-G7); locally only the changed flow (TEST-G9)                    |
 
 Also tested, always:
 
@@ -230,6 +242,6 @@ A project that adopts mutation testing follows these rules:
 - [ ] Tests are deterministic (no wall clock, no sleeps, no order dependence, no shared state, seeded randomness, generous timeouts) and isolated (own database, own ports) (TEST-P5, TEST-D1, TEST-D2, TEST-D3, TEST-D4, TEST-D5, TEST-D6, TEST-I1, TEST-I2).
 - [ ] Every bug fix has a regression test that fails on the old code (TEST-W4).
 - [ ] Flaky tests are fixed the same day, not retried; at most one end-to-end retry, reported; runner crashes fixed (TEST-F1, TEST-F2, TEST-F3, TEST-F4).
-- [ ] End-to-end (mocked API on push, real backend before release) passes before any deploy (TEST-W1, TEST-G7).
+- [ ] End-to-end (mocked API and real backend) runs once in the release pipeline and passes before any deploy; not on every push nor in hooks; locally only the changed flow's specs (TEST-W1, TEST-G7, TEST-G9).
 - [ ] Tests mirror the code, the suite runs locally in a few minutes, expensive setup once per file (TEST-S1, TEST-S2, TEST-S3).
 - [ ] Optional: mutation testing on the critical paths (money, permissions, personal data), run periodically and on pull requests touching them, with a score target, survivors triaged, scope and target recorded (TEST-M1, TEST-M2, TEST-M3, TEST-M4, TEST-M5).

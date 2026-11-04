@@ -1,8 +1,11 @@
 # CI/CD standard
 
-**Version:** 1.0 (2026-11-02). **For:** every project of ours that is deployed. **Audience:** the
+**Version:** 1.1 (2026-11-04). **For:** every project of ours that is deployed. **Audience:** the
 developer, or the AI agent, setting up or reviewing a project's pipelines, environments and
 releases.
+
+**Changes in 1.1:** CI-10 says the end-to-end suites (mocked and real backend) run once in the
+release pipeline, not on every push; promotions only run a smoke test.
 
 Code reaches users through one path: a branch, a pipeline that proves it, an image built once, and a
 promotion of that same image from environment to environment. Nothing is deployed by hand, nothing
@@ -79,9 +82,9 @@ previous ones green:
 - **CI-9 — The image scan** fails on a critical vulnerability that has a fix; the report is kept
   with the run. Base images are pinned and rebuilt regularly ([security standard](security.md),
   SEC-D4).
-- **CI-10 — End-to-end before a release.** The slow suites (end-to-end against the real backend)
-  run before a staging release, not necessarily on every push; a red suite stops the release
-  (testing standard).
+- **CI-10 — End-to-end before a release.** The end-to-end suites (mocked API and real backend) run
+  once, in the release pipeline before the staging deploy, not on every push; a red suite stops the
+  release. Promotions of the same commit only run a smoke test (testing standard, TEST-G7).
 - The pipeline is fast enough to run on every push (target: under 15 minutes to an image); slow
   suites are moved to the release, never dropped.
 
