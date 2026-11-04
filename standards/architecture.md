@@ -1,7 +1,9 @@
 # Architecture standard
 
-**Version:** 1.2 (2026-11-03). **For:** every project of ours, backend and frontend. **Audience:**
+**Version:** 1.3 (2026-11-04). **For:** every project of ours, backend and frontend. **Audience:**
 the developer, or the AI agent, building or reviewing code in a project.
+
+**Changes in 1.3:** database collection and table names are plural, the model singular (ARCH-N5).
 
 **Changes in 1.2:** rules that are consistency choices are marked _(convention)_ (README,
 "Conventions"); the 422 status, the error body and the rule-key naming get their own IDs (ARCH-V16,
@@ -302,6 +304,15 @@ Rules checked by review:
 - **ARCH-N4 — Units in the name or the type.** Money in integer minor units (`unitPriceCents`) or a
   decimal type, durations with their unit (`timeoutMs`, `retentionDays`), instants stored in UTC and
   shown in the user's time zone.
+- **ARCH-N5 — Collections and tables are plural, the model is singular.** _(convention)_ A
+  collection or table holds many records, so its name is the plural of what one record is; the model
+  (the file, the record factory, the type) names one record. Model `book` -> collection `books`,
+  `billing-price` -> `billing_prices`, `category` -> `categories`. Multi-word names put the plural on
+  the last word, in the database's casing (`snake_case` unless the database imposes another). A
+  link table is named for what one row is (`memberships`, `order_lines`), or both sides with the last
+  one plural (`patient_access_grants`), never `user_role_map`. It holds even when the collection
+  keeps one document per key or a single document: name the record (`sync_states`,
+  `health_checks`, `settings`), not the feature (`peritia_sync_state`, `service_health`).
 
 > **Reference implementation (Node/React).** Backend files in kebab-case `.js`
 > (`billing-prices-router.js`); frontend components and pages in PascalCase `.jsx`, other modules in
@@ -634,6 +645,7 @@ import { orderStatusBadge } from "@/app/util/orderStatus"; // Good: shared, name
 ## 11. Checklist
 
 - [ ] Top-level folders are layers, or the decision log records feature folders with their reasons and section 2.3 is followed; every file name carries its domain.
+- [ ] Collection and table names are the plural of their singular model (ARCH-N5).
 - [ ] The dependency check (`check:architecture`) runs in the fast checks (pre-commit and CI) with no violation.
 - [ ] Routers validate every input with a schema, require a permission, call one service; no database access.
 - [ ] Business rules live in `domain/` or services, once; authorization in permissions and policies.
