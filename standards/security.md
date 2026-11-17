@@ -224,6 +224,9 @@ strict-origin-when-cross-origin` (or stricter), a `Permissions-Policy` that turn
   "wrong password" (SEC-A4).
 - **SEC-E3 — Unexpected errors** are `500` with a generic code, logged once with their stack and
   sent to error tracking (scrubbed).
+- **SEC-E4 — Short outside, complete inside.** What the caller gets stays minimal; the log line and
+  the error-tracking issue describe the failure fully, with ids and states but never secrets or
+  personal data ([error diagnostics standard](errors.md)).
 
 ## 10. Backups and restore
 

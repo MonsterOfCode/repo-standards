@@ -1,7 +1,11 @@
 # Application logging standard
 
-**Version:** 1.2 (2026-11-03). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
+**Version:** 1.3 (2026-11-17). **For:** every backend service of ours. **Audience:** the developer, or the AI agent, building or
 reviewing a service's logging.
+
+**Changes in 1.3:** LOG-X6 keeps every level of an error (name, message, code, context, own
+properties, stack, cause chain) through the shared error serialiser, with visible limit markers;
+it used to flatten an error to its stack text, which lost its code, context and cause.
 
 **Changes in 1.2:** every rule has a stable ID (`LOG-<area><n>`) and every checklist item cites the
 rules it covers; no rule's meaning changed.
@@ -66,7 +70,8 @@ platforms, `N` never in a log.
 - **LOG-L1 — Levels as in the table.** Each line uses the level the table gives its kind of event;
   `debug` is off in deployed environments.
 - **LOG-L2 — An error is logged once**, where it is handled (the central error handler, the job
-  runner), with its stack. Don't log it again at every layer it passes through.
+  runner), with its stack, code, context and cause chain (what an error must say is the
+  [error diagnostics standard](errors.md)). Don't log it again at every layer it passes through.
 - **LOG-L3 — Expected client errors are not `error`.** 4xx validation and 404 are already recorded
   by the access line.
 
@@ -214,8 +219,11 @@ must not leak.
 
 - **LOG-X5 — One shared scrubber.** The logger and the error-tracking client use **one** shared
   scrubber, so both filter the same things.
-- **LOG-X6 — Safe serialisation.** Before scrubbing, turn values into plain JSON (an Error becomes
-  its stack text, dates their ISO string), cap the depth, and survive circular objects.
+- **LOG-X6 — Safe serialisation.** Before scrubbing, turn values into plain JSON with the error
+  serialiser of the [error diagnostics standard](errors.md) (section 8): an error keeps its name,
+  message, code, context, own properties, stack and cause chain (never only its stack text), dates
+  become ISO strings, cycles and depth or size limits become visible markers distinct from
+  `[Filtered]`, and the serialisation never throws.
 - **LOG-X7 — Redaction is tested.** A test proves that an e-mail, a phone number, a Bearer token, a
   JWT and a `{ password }` field passed to the logger never come out in any format.
 

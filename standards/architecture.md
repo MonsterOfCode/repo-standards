@@ -350,7 +350,9 @@ Rules checked by review:
 ```
 
 - `code`: the stable `snake_case` code the frontend translates (ARCH-B16).
-- `message`: a short English sentence for developers and logs, never shown as is to a user.
+- `message`: a short English sentence for developers and logs, never shown as is to a user. The
+  full diagnostics (context, cause, provider text) stay in the logs
+  ([error diagnostics standard](errors.md), ERR-S3).
 - `requestId`: the id of the request in the logs (logging standard), so a user's report finds it.
 - Optional, per code: `params` (values the translated message needs, e.g. `{ "count": 2 }`) and
   `retryAfterSeconds` (429, 503).

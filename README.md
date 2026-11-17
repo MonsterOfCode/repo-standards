@@ -1,7 +1,7 @@
 # Engineering standards
 
 The standards every one of our projects follows, so that architecture, APIs, security, privacy,
-agent setup, audit trails, logs, monitoring, tests, the checks run on every commit and the way code
+agent setup, audit trails, logs, error diagnostics, monitoring, tests, the checks run on every commit and the way code
 is released work the same way everywhere.
 
 Each standard is written for the developer **or the AI agent** implementing it in a project: it
@@ -20,7 +20,8 @@ standard in your project and confirm every checklist item.
 | [Privacy](standards/privacy.md)               | 1.1     | data classification and register, minimisation, retention, the rights of the person, erasure that survives a backup restore, consent, access to sensitive data, breach notification, sub-processors, DPIA                                                       |
 | [Agents](standards/agents.md)                 | 1.2     | the files every repository has for AI agents (`AGENTS.md`, `STATUS.md`, decision log, skills), how an agent works in it, and agents as a security boundary                                                                                                      |
 | [Audit log](standards/audit-log.md)           | 1.2     | rule IDs; who did what, when, to what, and who saw what: two layers, privacy rules, retention, alerts, tamper resistance                                                                                                                                        |
-| [Application logging](standards/logging.md)   | 1.2     | rule IDs; JSON events on stdout, base fields, access event, redaction, Kubernetes                                                                                                                                                                               |
+| [Application logging](standards/logging.md)   | 1.3     | rule IDs; JSON events on stdout, base fields, access event, redaction, Kubernetes                                                                                                                                                                               |
+| [Error diagnostics](standards/errors.md)      | 1.0     | every error says what failed, on what, why and what happened next: precise codes, factual messages, structured context, kept causes, integration and job failures; never a secret or personal data; short answers outside, full story in the logs               |
 | [Service health](standards/service-health.md) | 1.2     | rule IDs; checks of every dependency and job, background-job rules, failure alerts, settings, health endpoints, Prometheus metrics, required external uptime monitoring                                                                                         |
 | [Testing](standards/testing.md)               | 1.3     | rule IDs; 100% coverage gate in the pipeline, what to test, determinism, isolation, exclusions, optional mutation testing                                                                                                                                       |
 | [Commit checks](standards/commit-checks.md)   | 1.2     | rule IDs; what every commit and push must pass: format, lint, translations, emails, migrations, route docs, CSS, env, secrets, commit messages                                                                                                                  |
